@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Drive File Manager</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <!-- ═══ Login Page ═══ -->
+  <div id="login-container">
+    <div class="login-card">
+      <div class="login-logo">
+        <svg width="48" height="48" viewBox="0 0 48 48"><path fill="#1a73e8" d="M24 4L6 14v20l18 10 18-10V14L24 4z"/><path fill="#fff" d="M24 8L10 16v16l14 8 14-8V16L24 8z"/><path fill="#1a73e8" d="M24 12L14 18v12l10 6 10-6V18l-10-6z"/></svg>
+      </div>
+      <h1>Google Drive File Manager</h1>
+      <p class="login-subtitle">จัดการไฟล์ของคุณบน Google Drive</p>
+      <button class="google-btn" onclick="login()">
+        <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.54 28.59A14.5 14.5 0 019.5 24c0-1.59.28-3.14.76-4.59l-7.98-6.19A23.99 23.99 0 000 24c0 3.77.87 7.35 2.56 10.56l7.98-5.97z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 5.97C6.51 42.62 14.62 48 24 48z"/></svg>
+        <span>Sign in with Google</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ App Container ═══ -->
+  <div id="app-container" class="hidden">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <svg width="28" height="28" viewBox="0 0 48 48"><path fill="#1a73e8" d="M24 4L6 14v20l18 10 18-10V14L24 4z"/><path fill="#fff" d="M24 8L10 16v16l14 8 14-8V16L24 8z"/><path fill="#1a73e8" d="M24 12L14 18v12l10 6 10-6V18l-10-6z"/></svg>
+        <span class="app-title">Drive Manager</span>
+      </div>
+      <div class="header-right" id="user-info">
+        <img id="user-avatar" class="user-avatar" src="" alt="">
+        <span id="user-email" class="user-email"></span>
+        <button class="btn btn-text" onclick="logout()">ออกจากระบบ</button>
+      </div>
+    </header>
+
+    <!-- Search -->
+    <div class="search-bar">
+      <input type="text" id="search-input" placeholder="ค้นหาไฟล์..." onkeydown="if(event.key==='Enter')searchFiles()">
+      <button class="btn btn-primary" onclick="searchFiles()">ค้นหา</button>
+      <button class="btn btn-text" id="clear-search" onclick="clearSearch()" style="display:none">✕ ล้าง</button>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions-bar">
+      <button class="btn btn-outline" onclick="showNewFolderModal()">+ โฟลเดอร์ใหม่</button>
+      <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">⬆ อัปโหลด</button>
+      <input type="file" id="file-input" multiple style="display:none" onchange="uploadFiles(this.files);this.value=''">
+    </div>
+
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb" id="breadcrumb"></nav>
+
+    <!-- Loading -->
+    <div id="loading" class="loading hidden"><div class="spinner"></div><span>กำลังโหลด...</span></div>
+
+    <!-- File Grid -->
+    <div class="file-grid" id="file-grid"></div>
+    <div id="load-more" class="load-more hidden"><button class="btn btn-outline" onclick="loadMore()">โหลดเพิ่มเติม...</button></div>
+    <div id="empty-state" class="empty-state hidden">
+      <p>ยังไม่มีไฟล์ในโฟลเดอร์นี้</p>
+      <p class="empty-hint">ลากไฟล์มาวางหรือกด "อัปโหลด" เพื่อเพิ่มไฟล์</p>
+    </div>
+
+    <!-- Upload Progress -->
+    <div id="upload-progress" class="upload-progress hidden">
+      <div class="progress-label"><span id="progress-text">กำลังอัปโหลด...</span></div>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    </div>
+  </div>
+
+  <!-- ═══ Drag & Drop Overlay ═══ -->
+  <div id="drop-overlay" class="drop-overlay hidden">
+    <div class="drop-content">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <p>วางไฟล์ที่นี่เพื่ออัปโหลด</p>
+    </div>
+  </div>
+
+  <!-- ═══ Toast Container ═══ -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- ═══ Modals ═══ -->
+
+  <!-- Preview Modal -->
+  <div id="preview-modal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closePreviewModal()"></div>
+    <div class="modal-content preview-content">
+      <button class="modal-close" onclick="closePreviewModal()">✕</button>
+      <img id="preview-image" class="preview-image" src="" alt="Preview">
+      <div id="preview-info" class="preview-info"></div>
+    </div>
+  </div>
+
+  <!-- Share Modal -->
+  <div id="share-modal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeShareModal()"></div>
+    <div class="modal-content share-content">
+      <button class="modal-close" onclick="closeShareModal()">✕</button>
+      <h3>แชร์ไฟล์</h3>
+      <div class="share-email-row">
+        <input type="email" id="share-email-input" placeholder="อีเมลผู้รับ (เว้นว่างไว้ = สร้างลิงก์สาธารณะ)">
+        <button class="btn btn-primary" id="share-email-btn" onclick="shareToEmail()">ส่ง</button>
+      </div>
+      <div class="share-divider"><span>หรือ</span></div>
+      <div class="share-input-group">
+        <input type="text" id="share-link-input" readonly onclick="this.select()">
+        <button class="btn btn-primary" onclick="copyShareLink()">คัดลอก</button>
+      </div>
+      <div id="share-status" class="share-status"></div>
+    </div>
+  </div>
+
+  <!-- Delete Confirm Modal -->
+  <div id="delete-modal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeDeleteModal()"></div>
+    <div class="modal-content delete-content">
+      <h3>ยืนยันการลบ</h3>
+      <p id="delete-message">คุณต้องการลบไฟล์นี้?</p>
+      <div class="modal-actions">
+        <button class="btn btn-text" onclick="closeDeleteModal()">ยกเลิก</button>
+        <button class="btn btn-danger" id="delete-confirm-btn">ลบ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Folder Modal -->
+  <div id="new-folder-modal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeNewFolderModal()"></div>
+    <div class="modal-content folder-content">
+      <button class="modal-close" onclick="closeNewFolderModal()">✕</button>
+      <h3>สร้างโฟลเดอร์ใหม่</h3>
+      <input type="text" id="folder-name-input" placeholder="ชื่อโฟลเดอร์" onkeydown="if(event.key==='Enter')confirmCreateFolder()">
+      <div class="modal-actions">
+        <button class="btn btn-text" onclick="closeNewFolderModal()">ยกเลิก</button>
+        <button class="btn btn-primary" onclick="confirmCreateFolder()">สร้าง</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Folder Picker Modal -->
+  <div id="folder-picker-modal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeFolderPicker()"></div>
+    <div class="modal-content picker-content">
+      <button class="modal-close" onclick="closeFolderPicker()">✕</button>
+      <h3 id="picker-title">เลือกโฟลเดอร์ปลายทาง</h3>
+      <nav class="picker-breadcrumb" id="picker-breadcrumb"></nav>
+      <div class="picker-grid" id="picker-grid"></div>
+      <div class="picker-empty hidden" id="picker-empty">ไม่มีโฟลเดอร์ในนี้</div>
+      <div class="modal-actions">
+        <button class="btn btn-text" onclick="closeFolderPicker()">ยกเลิก</button>
+        <button class="btn btn-primary" id="picker-confirm-btn" onclick="confirmFolderPick()">ย้ายที่นี่</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
