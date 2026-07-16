@@ -10,6 +10,7 @@ const state = {
   files: [],
   nextPageToken: null,
   searching: false,
+  showingTrash: false,
 };
 
 // ──── DOM refs ────
@@ -205,6 +206,71 @@ async function confirmDelete() {
 }
 
 function closeDeleteModal() { $('delete-modal').classList.add('hidden'); deleteTarget = null; }
+
+function showPermanentDeleteConfirm(file) {
+  deleteTarget = file;
+  $('delete-message').textContent = `คุณต้องการลบ "${file.name}" ถาวร? (ไม่สามารถกู้คืนได้)`;
+  $('delete-confirm-btn').onclick = confirmPermanentDelete;
+  $('delete-modal').classList.remove('hidden');
+}
+
+async function confirmPermanentDelete() {
+  if (!deleteTarget) return;
+  $('delete-modal').classList.add('hidden');
+  try {
+    await api(`/api/files/${deleteTarget.id}/permanent`, { method: 'DELETE' });
+    toast(`ลบ "${deleteTarget.name}" ถาวรแล้ว`, 'success');
+    state.files = state.files.filter(f => f.id !== deleteTarget.id);
+    deleteTarget = null;
+    renderAll();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ──── Rename ────
+async function renameFile(fileId, oldName) {
+  const newName = prompt('เปลี่ยนชื่อไฟล์:', oldName);
+  if (!newName || newName === oldName) return;
+  try {
+    await api(`/api/files/${fileId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name: newName.trim() }),
+    });
+    toast('เปลี่ยนชื่อสำเร็จ', 'success');
+    loadFiles();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+// ──── Trash View ────
+async function toggleTrash() {
+  state.showingTrash = !state.showingTrash;
+  $('trash-btn').textContent = state.showingTrash ? '← กลับ' : '🗑 ถังขยะ';
+  if (state.showingTrash) {
+    $('search-input').value = '';
+    $('clear-search').style.display = 'none';
+    showLoading(true);
+    try {
+      const data = await api('/api/trash');
+      if (!data) return;
+      state.files = data.files;
+      state.nextPageToken = null;
+      renderAll();
+    } catch (e) { toast(e.message, 'error'); }
+    finally { showLoading(false); }
+  } else {
+    loadFiles();
+  }
+}
+
+async function restoreFile(fileId) {
+  try {
+    await api(`/api/files/${fileId}/restore`, { method: 'POST' });
+    toast('กู้คืนไฟล์แล้ว', 'success');
+    state.files = state.files.filter(f => f.id !== fileId);
+    renderAll();
+  } catch (e) { toast(e.message, 'error'); }
+}
 
 // ──── Share ────
 let shareTargetId = null;
@@ -409,13 +475,20 @@ function closeFolderPicker() { $('folder-picker-modal').classList.add('hidden');
 function renderAll() {
   renderBreadcrumb();
   renderFileGrid();
-  loadMoreBtn.classList.toggle('hidden', !state.nextPageToken || state.searching);
+  loadMoreBtn.classList.toggle('hidden', !state.nextPageToken || state.searching || state.showingTrash);
   const empty = !state.files.length;
   emptyState.classList.toggle('hidden', !empty);
   fileGrid.classList.toggle('hidden', empty);
+  emptyState.innerHTML = empty
+    ? (state.showingTrash ? '<p>ถังขยะว่าง</p>' : '<p>ยังไม่มีไฟล์ในโฟลเดอร์นี้</p><p class="empty-hint">ลากไฟล์มาวางหรือกด "อัปโหลด" เพื่อเพิ่มไฟล์</p>')
+    : '';
 }
 
 function renderBreadcrumb() {
+  if (state.showingTrash) {
+    breadcrumb.innerHTML = '<span class="current">🗑 ถังขยะ</span>';
+    return;
+  }
   breadcrumb.innerHTML = state.breadcrumb.map((item, idx) => {
     const isLast = idx === state.breadcrumb.length - 1;
     if (isLast) return `<span class="current">${escapeHtml(item.name)}</span>`;
@@ -435,21 +508,34 @@ function renderFileCard(file) {
   const name = escapeHtml(file.name);
   const cls = `file-card${isFolder ? ' folder-card' : ''}`;
   const onclick = isFolder
-    ? `navigateToFolder('${file.id}','${escapeHtml(file.name).replace(/'/g, "\\'")}')`
+    ? (state.showingTrash ? '' : `navigateToFolder('${file.id}','${escapeHtml(file.name).replace(/'/g, "\\'")}')`)
     : `previewFile(${JSON.stringify(file).replace(/'/g, "\\'").replace(/"/g, '&quot;')})`;
 
   let actions = '';
-  if (!isFolder) {
+
+  if (state.showingTrash) {
     actions = `
-      <button onclick="event.stopPropagation();shareFile('${file.id}','${name.replace(/'/g, "\\'")}')" title="แชร์">🔗</button>
-      <button onclick="event.stopPropagation();openFolderPicker('move','${file.id}','${name.replace(/'/g, "\\'")}','${state.currentFolderId}')" title="ย้าย">📂</button>
-      <button onclick="event.stopPropagation();openFolderPicker('copy','${file.id}','${name.replace(/'/g, "\\'")}','${state.currentFolderId}')" title="คัดลอก">📋</button>
-      <button onclick="event.stopPropagation();downloadFile('${file.id}','${name}')" title="ดาวน์โหลด">⬇</button>
+      <button onclick="event.stopPropagation();restoreFile('${file.id}')" title="กู้คืน">♻️</button>
+      <button onclick="event.stopPropagation();showPermanentDeleteConfirm({id:'${file.id}',name:'${name}'})" title="ลบถาวร">🗑</button>
+    `;
+  } else {
+    if (!isFolder) {
+      actions = `
+        <button onclick="event.stopPropagation();renameFile('${file.id}','${name.replace(/'/g, "\\'")}')" title="เปลี่ยนชื่อ">✏️</button>
+        <button onclick="event.stopPropagation();shareFile('${file.id}','${name.replace(/'/g, "\\'")}')" title="แชร์">🔗</button>
+        <button onclick="event.stopPropagation();openFolderPicker('move','${file.id}','${name.replace(/'/g, "\\'")}','${state.currentFolderId}')" title="ย้าย">📂</button>
+        <button onclick="event.stopPropagation();openFolderPicker('copy','${file.id}','${name.replace(/'/g, "\\'")}','${state.currentFolderId}')" title="คัดลอก">📋</button>
+        <button onclick="event.stopPropagation();downloadFile('${file.id}','${name}')" title="ดาวน์โหลด">⬇</button>
+      `;
+    } else {
+      actions = `
+        <button onclick="event.stopPropagation();renameFile('${file.id}','${name.replace(/'/g, "\\'")}')" title="เปลี่ยนชื่อ">✏️</button>
+      `;
+    }
+    actions += `
+      <button onclick="event.stopPropagation();showDeleteConfirm({id:'${file.id}',name:'${name}'})" title="ลบ">🗑</button>
     `;
   }
-  actions += `
-    <button onclick="event.stopPropagation();showDeleteConfirm({id:'${file.id}',name:'${name}'})" title="ลบ">🗑</button>
-  `;
 
   return `
     <div class="${cls}" data-id="${file.id}" data-mime="${file.mimeType || ''}" onclick="${onclick}">

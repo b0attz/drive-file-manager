@@ -49,6 +49,7 @@
       <button class="btn btn-outline" onclick="showNewFolderModal()">+ โฟลเดอร์ใหม่</button>
       <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">⬆ อัปโหลด</button>
       <input type="file" id="file-input" multiple style="display:none" onchange="uploadFiles(this.files);this.value=''">
+      <button class="btn btn-outline" id="trash-btn" onclick="toggleTrash()">🗑 ถังขยะ</button>
     </div>
 
     <!-- Breadcrumb -->

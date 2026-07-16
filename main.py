@@ -253,15 +253,21 @@ async def _upload_files(service, files: list[UploadFile], folder_id: str = "root
             media_body=media,
             fields=DRIVE_FIELDS,
         ).execute()
+        uploaded.append(result)
     return uploaded
 
 
-async def _delete_file(service, file_id: str) -> None:
+async def _trash_file(service, file_id: str) -> None:
     try:
-        service.files().delete(fileId=file_id).execute()
-    except Exception as exc:
-        if "cannot be deleted" in str(exc).lower():
-            raise HTTPException(status_code=409, detail="Folder is not empty — delete files inside first")
+        service.files().update(fileId=file_id, body={"trashed": True}).execute()
+    except Exception:
+        raise HTTPException(status_code=404, detail="File not found")
+
+
+async def _restore_file(service, file_id: str) -> None:
+    try:
+        service.files().update(fileId=file_id, body={"trashed": False}).execute()
+    except Exception:
         raise HTTPException(status_code=404, detail="File not found")
 
 
@@ -353,8 +359,45 @@ async def upload_files(
 @app.delete("/api/files/{file_id:str}")
 async def delete_file(request: Request, file_id: str):
     service, _ = await get_drive_service(request)
-    await _delete_file(service, file_id)
+    await _trash_file(service, file_id)
+    return {"trashed": True}
+
+
+@app.patch("/api/files/{file_id:str}")
+async def rename_file(request: Request, file_id: str):
+    service, _ = await get_drive_service(request)
+    body = await request.json()
+    name = body.get("name", "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+    result = service.files().update(fileId=file_id, body={"name": name}, fields=DRIVE_FIELDS).execute()
+    return result
+
+
+@app.post("/api/files/{file_id:str}/restore")
+async def restore_file(request: Request, file_id: str):
+    service, _ = await get_drive_service(request)
+    await _restore_file(service, file_id)
+    return {"restored": True}
+
+
+@app.delete("/api/files/{file_id:str}/permanent")
+async def permanent_delete(request: Request, file_id: str):
+    service, _ = await get_drive_service(request)
+    service.files().delete(fileId=file_id).execute()
     return {"deleted": True}
+
+
+@app.get("/api/trash")
+async def list_trash(request: Request):
+    service, _ = await get_drive_service(request)
+    results = service.files().list(
+        q="trashed = true",
+        pageSize=100,
+        fields=f"files({DRIVE_FIELDS})",
+        orderBy="modifiedTime desc",
+    ).execute()
+    return {"files": results.get("files", [])}
 
 
 @app.get("/api/files/{file_id:str}/download")
