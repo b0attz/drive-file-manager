@@ -3,21 +3,22 @@ Google Drive File Manager
 FastAPI backend — OAuth 2.0 + Google Drive API v3
 """
 
+import io
 import json
-import os
 import mimetypes
+import os
 from pathlib import Path
-from urllib.parse import quote
 
+import requests as http_requests
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form
-from fastapi.responses import RedirectResponse, StreamingResponse, HTMLResponse
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from google.auth.transport.requests import Request as GoogleRequest
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaIoBaseUpload
 from starlette.middleware.sessions import SessionMiddleware
 
 # ── Configuration ──────────────────────────────────────────────────────
@@ -148,7 +149,6 @@ async def auth_callback(request: Request, code: str = "", state: str = ""):
     creds = flow.credentials
 
     # Fetch user info
-    import requests as http_requests
     resp = http_requests.get(
         "https://www.googleapis.com/oauth2/v2/userinfo",
         headers={"Authorization": f"Bearer {creds.token}"},
@@ -178,7 +178,6 @@ async def api_me(request: Request):
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     creds = load_token(email)
-    import requests as http_requests
     resp = http_requests.get(
         "https://www.googleapis.com/oauth2/v2/userinfo",
         headers={"Authorization": f"Bearer {creds.token}"},
@@ -206,8 +205,6 @@ async def _list_files(service, folder_id: str = "root", page_token: str = "", pa
         kwargs["pageToken"] = page_token
     results = service.files().list(**kwargs).execute()
     files = results.get("files", [])
-    # Sort: folders first
-    files.sort(key=lambda f: (0 if f.get("mimeType") == "application/vnd.google-apps.folder" else 1, f.get("name", "").lower()))
     return {"files": files, "nextPageToken": results.get("nextPageToken")}
 
 
@@ -223,7 +220,6 @@ async def _search_files(service, query: str, folder_id: str = "") -> dict:
         orderBy="folder,modifiedTime desc",
     ).execute()
     files = results.get("files", [])
-    files.sort(key=lambda f: (0 if f.get("mimeType") == "application/vnd.google-apps.folder" else 1, f.get("name", "").lower()))
     return {"files": files}
 
 
@@ -237,10 +233,6 @@ async def _upload_files(service, files: list[UploadFile], folder_id: str = "root
                 status_code=413,
                 detail=f"File {upload_file.filename} exceeds {MAX_UPLOAD_SIZE_MB}MB limit",
             )
-# Upload directly from memory — no temp file needed
-        import io
-        from googleapiclient.http import MediaIoBaseUpload
-
         mime_type, _ = mimetypes.guess_type(upload_file.filename or "")
         mime_type = mime_type or "application/octet-stream"
 

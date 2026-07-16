@@ -423,7 +423,7 @@ async function loadPickerFolders() {
     } else {
       $('picker-empty').classList.add('hidden');
       grid.innerHTML = folders.map(f => `
-        <div class="picker-folder" onclick="navigatePickerFolder('${f.id}','${escapeHtml(f.name).replace(/'/g, "\\'")}')">
+        <div class="picker-folder" onclick="navigatePickerFolder(${JSON.stringify(f.id)},${JSON.stringify(f.name)})">
           <span>📁 ${escapeHtml(f.name)}</span>
         </div>
       `).join('');
@@ -506,34 +506,34 @@ function renderFileCard(file) {
   const size = isFolder ? '—' : formatSize(file.size);
   const date = formatDate(file.modifiedTime);
   const name = escapeHtml(file.name);
-  const cls = `file-card${isFolder ? ' folder-card' : ''}`;
+  const cls = 'file-card';
   const onclick = isFolder
-    ? (state.showingTrash ? '' : `navigateToFolder('${file.id}','${escapeHtml(file.name).replace(/'/g, "\\'")}')`)
-    : `previewFile(${JSON.stringify(file).replace(/'/g, "\\'").replace(/"/g, '&quot;')})`;
+    ? (state.showingTrash ? '' : `navigateToFolder(${JSON.stringify(file.id)},${JSON.stringify(file.name)})`)
+    : `previewFile(${JSON.stringify(file)})`;
 
   let actions = '';
 
   if (state.showingTrash) {
     actions = `
-      <button onclick="event.stopPropagation();restoreFile('${file.id}')" title="กู้คืน">♻️</button>
-      <button onclick="event.stopPropagation();showPermanentDeleteConfirm({id:'${file.id}',name:'${name}'})" title="ลบถาวร">🗑</button>
+      <button onclick="event.stopPropagation();restoreFile(${JSON.stringify(file.id)})" title="กู้คืน">♻️</button>
+      <button onclick="event.stopPropagation();showPermanentDeleteConfirm(${JSON.stringify({id:file.id,name:file.name})})" title="ลบถาวร">🗑</button>
     `;
   } else {
     if (!isFolder) {
       actions = `
-        <button onclick="event.stopPropagation();renameFile('${file.id}','${name.replace(/'/g, "\\'")}')" title="เปลี่ยนชื่อ">✏️</button>
-        <button onclick="event.stopPropagation();shareFile('${file.id}','${name.replace(/'/g, "\\'")}')" title="แชร์">🔗</button>
-        <button onclick="event.stopPropagation();openFolderPicker('move','${file.id}','${name.replace(/'/g, "\\'")}','${state.currentFolderId}')" title="ย้าย">📂</button>
-        <button onclick="event.stopPropagation();openFolderPicker('copy','${file.id}','${name.replace(/'/g, "\\'")}','${state.currentFolderId}')" title="คัดลอก">📋</button>
-        <button onclick="event.stopPropagation();downloadFile('${file.id}','${name}')" title="ดาวน์โหลด">⬇</button>
+        <button onclick="event.stopPropagation();renameFile(${JSON.stringify(file.id)},${JSON.stringify(file.name)})" title="เปลี่ยนชื่อ">✏️</button>
+        <button onclick="event.stopPropagation();shareFile(${JSON.stringify(file.id)},${JSON.stringify(file.name)})" title="แชร์">🔗</button>
+        <button onclick="event.stopPropagation();openFolderPicker('move',${JSON.stringify(file.id)},${JSON.stringify(file.name)},${JSON.stringify(state.currentFolderId)})" title="ย้าย">📂</button>
+        <button onclick="event.stopPropagation();openFolderPicker('copy',${JSON.stringify(file.id)},${JSON.stringify(file.name)},${JSON.stringify(state.currentFolderId)})" title="คัดลอก">📋</button>
+        <button onclick="event.stopPropagation();downloadFile(${JSON.stringify(file.id)},${JSON.stringify(file.name)})" title="ดาวน์โหลด">⬇</button>
       `;
     } else {
       actions = `
-        <button onclick="event.stopPropagation();renameFile('${file.id}','${name.replace(/'/g, "\\'")}')" title="เปลี่ยนชื่อ">✏️</button>
+        <button onclick="event.stopPropagation();renameFile(${JSON.stringify(file.id)},${JSON.stringify(file.name)})" title="เปลี่ยนชื่อ">✏️</button>
       `;
     }
     actions += `
-      <button onclick="event.stopPropagation();showDeleteConfirm({id:'${file.id}',name:'${name}'})" title="ลบ">🗑</button>
+      <button onclick="event.stopPropagation();showDeleteConfirm(${JSON.stringify({id:file.id,name:file.name})})" title="ลบ">🗑</button>
     `;
   }
 
@@ -600,8 +600,6 @@ function toast(msg, type = 'info') {
 }
 
 // ──── Drag & Drop ────
-let dragCounter = 0;
-
 document.addEventListener('dragover', (e) => {
   e.preventDefault();
   dropOverlay.classList.remove('hidden');
