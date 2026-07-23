@@ -134,6 +134,7 @@ async def get_drive_service(request: Request):
 
 @app.get("/auth/login")
 async def auth_login(request: Request):
+    request.session.clear()
     flow = create_flow()
     auth_url, state = flow.authorization_url(
         access_type="offline", prompt="consent", include_granted_scopes="true"
