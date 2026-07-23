@@ -3,3 +3,5 @@ tokens/
 __pycache__/
 *.pyc
 *.pyo
+.freebuff/
+nul

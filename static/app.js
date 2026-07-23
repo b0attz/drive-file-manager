@@ -34,31 +34,12 @@ async function api(path, opts = {}) {
     headers: opts.body instanceof FormData ? {} : { 'Content-Type': 'application/json', ...opts.headers },
     ...opts,
   });
-  if (res.status === 401) return null;
+  if (res.status === 401) { showLogin(); return null; }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || 'Request failed');
   }
   return res.json();
-}
-
-function apiUpload(path, formData, onProgress) {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', path, true);
-    xhr.withCredentials = true;
-    xhr.upload.onprogress = onProgress;
-    xhr.onload = () => {
-      if (xhr.status === 401) { window.location.reload(); return; }
-      try {
-        const data = JSON.parse(xhr.responseText);
-        if (xhr.status >= 400) reject(new Error(data.detail || 'Upload failed'));
-        else resolve(data);
-      } catch (e) { reject(new Error('Invalid response')); }
-    };
-    xhr.onerror = () => reject(new Error('Network error'));
-    xhr.send(formData);
-  });
 }
 
 // ──── Auth ────
@@ -145,33 +126,58 @@ function clearSearch() {
 // ──── Upload ────
 async function uploadFiles(fileList) {
   if (!fileList || !fileList.length) return;
-  const total = fileList.length;
+  const files = [...fileList];
+
+  // Filter oversized
+  const maxBytes = window.MAX_UPLOAD_BYTES || 100 * 1024 * 1024;
+  const ok = files.filter(f => f.size <= maxBytes);
+  const oversized = files.filter(f => f.size > maxBytes);
+  oversized.forEach(f => toast(`"${f.name}" เกินขนาดสูงสุด ${Math.round(maxBytes/1024/1024)}MB`, 'error'));
+
+  if (!ok.length) return;
+
+  const total = ok.length;
+  const totalBytes = ok.reduce((s, f) => s + f.size, 0);
+  let uploadedBytes = 0;
   let completed = 0;
 
   uploadProgress.classList.remove('hidden');
   progressFill.style.width = '0%';
 
-  const files = [];
-  for (const file of fileList) files.push(file);
-
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
+  const uploadOne = (file) => new Promise((resolve) => {
     const formData = new FormData();
     formData.append('files', file);
     formData.append('folder_id', state.currentFolderId);
-
-    try {
-      progressText.textContent = `กำลังอัปโหลด (${i + 1}/${total}): ${file.name}`;
-      await apiUpload('/api/files/upload', formData, (e) => {
-        if (e.lengthComputable) {
-          const pct = Math.round((e.loaded / e.total) * 100);
-          progressFill.style.width = `${pct}%`;
-        }
-      });
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/files/upload', true);
+    xhr.withCredentials = true;
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const pct = ((uploadedBytes + e.loaded) / totalBytes) * 100;
+        progressFill.style.width = `${Math.round(pct)}%`;
+      }
+    };
+    xhr.onload = () => {
+      uploadedBytes += file.size;
       completed++;
-    } catch (e) {
-      toast(`อัปโหลด ${file.name} ล้มเหลว: ${e.message}`, 'error');
-    }
+      if (xhr.status === 401) { window.location.reload(); return; }
+      if (xhr.status >= 400) {
+        try {
+          const d = JSON.parse(xhr.responseText);
+          toast(`อัปโหลด ${file.name} ล้มเหลว: ${d.detail || 'Upload failed'}`, 'error');
+        } catch (_) { toast(`อัปโหลด ${file.name} ล้มเหลว`, 'error'); }
+      }
+      resolve();
+    };
+    xhr.onerror = () => { uploadedBytes += file.size; completed++; toast(`อัปโหลด ${file.name} ล้มเหลว: Network error`, 'error'); resolve(); };
+    xhr.send(formData);
+    progressText.textContent = `กำลังอัปโหลด (${completed}/${total}): ${file.name}`;
+  });
+
+  // Upload 3 at a time
+  const concurrency = 3;
+  for (let i = 0; i < ok.length; i += concurrency) {
+    await Promise.all(ok.slice(i, i + concurrency).map(uploadOne));
   }
 
   uploadProgress.classList.add('hidden');
@@ -227,19 +233,32 @@ async function confirmPermanentDelete() {
 }
 
 // ──── Rename ────
-async function renameFile(fileId, oldName) {
-  const newName = prompt('เปลี่ยนชื่อไฟล์:', oldName);
-  if (!newName || newName === oldName) return;
+let renameTarget = null;
+
+function renameFile(fileId, fileName) {
+  renameTarget = { id: fileId, name: fileName };
+  $('rename-input').value = fileName;
+  $('rename-modal').classList.remove('hidden');
+  $('rename-input').focus();
+  $('rename-input').select();
+}
+
+function closeRenameModal() { $('rename-modal').classList.add('hidden'); renameTarget = null; }
+
+async function confirmRename() {
+  if (!renameTarget) return;
+  const name = $('rename-input').value.trim();
+  if (!name) { toast('กรุณากรอกชื่อ', 'error'); return; }
+  if (name === renameTarget.name) { closeRenameModal(); return; }
+  closeRenameModal();
   try {
-    await api(`/api/files/${fileId}`, {
+    await api(`/api/files/${renameTarget.id}`, {
       method: 'PATCH',
-      body: JSON.stringify({ name: newName.trim() }),
+      body: JSON.stringify({ name }),
     });
     toast('เปลี่ยนชื่อสำเร็จ', 'success');
     loadFiles();
-  } catch (e) {
-    toast(e.message, 'error');
-  }
+  } catch (e) { toast(e.message, 'error'); }
 }
 
 // ──── Trash View ────
@@ -291,6 +310,7 @@ function shareFile(fileId, fileName) {
 
 async function shareToEmail() {
   const email = $('share-email-input').value.trim();
+  if (!email && !confirm('ไม่กรอกอีเมล = สร้างลิงก์สาธารณะ ใครก็เข้าถึงไฟล์นี้ได้\n\nต้องการดำเนินการต่อ?')) return;
   const btn = $('share-email-btn');
   btn.textContent = 'กำลังแชร์...';
   btn.disabled = true;
@@ -480,7 +500,7 @@ function renderAll() {
   emptyState.classList.toggle('hidden', !empty);
   fileGrid.classList.toggle('hidden', empty);
   emptyState.innerHTML = empty
-    ? (state.showingTrash ? '<p>ถังขยะว่าง</p>' : '<p>ยังไม่มีไฟล์ในโฟลเดอร์นี้</p><p class="empty-hint">ลากไฟล์มาวางหรือกด "อัปโหลด" เพื่อเพิ่มไฟล์</p>')
+    ? (state.showingTrash ? '<p>ถังขยะว่าง</p>' : state.searching ? '<p>ไม่พบผลลัพธ์</p>' : '<p>ยังไม่มีไฟล์ในโฟลเดอร์นี้</p><p class="empty-hint">ลากไฟล์มาวางหรือกด "อัปโหลด" เพื่อเพิ่มไฟล์</p>')
     : '';
 }
 
@@ -506,46 +526,76 @@ function renderFileCard(file) {
   const size = isFolder ? '—' : formatSize(file.size);
   const date = formatDate(file.modifiedTime);
   const name = escapeHtml(file.name);
+  const fid = JSON.stringify(file.id);
+  const fname = JSON.stringify(file.name);
   const cls = 'file-card';
   const onclick = isFolder
-    ? (state.showingTrash ? '' : `navigateToFolder(${JSON.stringify(file.id)},${JSON.stringify(file.name)})`)
+    ? (state.showingTrash ? '' : `navigateToFolder(${fid},${fname})`)
     : `previewFile(${JSON.stringify(file)})`;
 
   let actions = '';
 
   if (state.showingTrash) {
     actions = `
-      <button onclick="event.stopPropagation();restoreFile(${JSON.stringify(file.id)})" title="กู้คืน">♻️</button>
-      <button onclick="event.stopPropagation();showPermanentDeleteConfirm(${JSON.stringify({id:file.id,name:file.name})})" title="ลบถาวร">🗑</button>
+      <button aria-label="กู้คืน" onclick="event.stopPropagation();restoreFile(${fid})">♻️</button>
+      <button aria-label="ลบถาวร" onclick="event.stopPropagation();showPermanentDeleteConfirm(${JSON.stringify({id:file.id,name:file.name})})">🗑</button>
     `;
   } else {
     if (!isFolder) {
       actions = `
-        <button onclick="event.stopPropagation();renameFile(${JSON.stringify(file.id)},${JSON.stringify(file.name)})" title="เปลี่ยนชื่อ">✏️</button>
-        <button onclick="event.stopPropagation();shareFile(${JSON.stringify(file.id)},${JSON.stringify(file.name)})" title="แชร์">🔗</button>
-        <button onclick="event.stopPropagation();openFolderPicker('move',${JSON.stringify(file.id)},${JSON.stringify(file.name)},${JSON.stringify(state.currentFolderId)})" title="ย้าย">📂</button>
-        <button onclick="event.stopPropagation();openFolderPicker('copy',${JSON.stringify(file.id)},${JSON.stringify(file.name)},${JSON.stringify(state.currentFolderId)})" title="คัดลอก">📋</button>
-        <button onclick="event.stopPropagation();downloadFile(${JSON.stringify(file.id)},${JSON.stringify(file.name)})" title="ดาวน์โหลด">⬇</button>
+        <button aria-label="เปลี่ยนชื่อ" onclick="event.stopPropagation();renameFile(${fid},${fname})">✏️</button>
+        <button aria-label="แชร์" onclick="event.stopPropagation();shareFile(${fid},${fname})">🔗</button>
+        <button aria-label="ย้าย" onclick="event.stopPropagation();openFolderPicker('move',${fid},${fname},${JSON.stringify(state.currentFolderId)})">📂</button>
+        <button aria-label="คัดลอก" onclick="event.stopPropagation();openFolderPicker('copy',${fid},${fname},${JSON.stringify(state.currentFolderId)})">📋</button>
+        <button aria-label="ดาวน์โหลด" onclick="event.stopPropagation();downloadFile(${fid},${fname})">⬇</button>
       `;
     } else {
       actions = `
-        <button onclick="event.stopPropagation();renameFile(${JSON.stringify(file.id)},${JSON.stringify(file.name)})" title="เปลี่ยนชื่อ">✏️</button>
+        <button aria-label="เปลี่ยนชื่อ" onclick="event.stopPropagation();renameFile(${fid},${fname})">✏️</button>
       `;
     }
     actions += `
-      <button onclick="event.stopPropagation();showDeleteConfirm(${JSON.stringify({id:file.id,name:file.name})})" title="ลบ">🗑</button>
+      <button aria-label="ลบ" onclick="event.stopPropagation();showDeleteConfirm(${JSON.stringify({id:file.id,name:file.name})})">🗑</button>
     `;
   }
 
+  // Kebab menu (mobile)
+  const kebabItems = state.showingTrash
+    ? `<button onclick="restoreFile(${fid})">♻️ กู้คืน</button><button onclick="showPermanentDeleteConfirm(${JSON.stringify({id:file.id,name:file.name})})">🗑 ลบถาวร</button>`
+    : (isFolder
+      ? `<button onclick="renameFile(${fid},${fname})">✏️ เปลี่ยนชื่อ</button>`
+      : `<button onclick="renameFile(${fid},${fname})">✏️ เปลี่ยนชื่อ</button><button onclick="shareFile(${fid},${fname})">🔗 แชร์</button><button onclick="openFolderPicker('move',${fid},${fname},${JSON.stringify(state.currentFolderId)})">📂 ย้าย</button><button onclick="openFolderPicker('copy',${fid},${fname},${JSON.stringify(state.currentFolderId)})">📋 คัดลอก</button><button onclick="downloadFile(${fid},${fname})">⬇ ดาวน์โหลด</button>`
+    ) + `<button onclick="showDeleteConfirm(${JSON.stringify({id:file.id,name:file.name})})">🗑 ลบ</button>`;
+
+  const kebab = `<div class="kebab-menu"><button class="kebab-toggle" aria-label="เมนู" onclick="event.stopPropagation();toggleKebab(this)">⋮</button><div class="kebab-dropdown">${kebabItems}</div></div>`;
+
+  const enterKey = isFolder
+    ? (state.showingTrash ? '' : `onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigateToFolder(${fid},${fname})}"`)
+    : `onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();previewFile(${JSON.stringify(file)})}"`;
+
   return `
-    <div class="${cls}" data-id="${file.id}" data-mime="${file.mimeType || ''}" onclick="${onclick}">
+    <div class="${cls}" data-id="${file.id}" data-mime="${file.mimeType || ''}" onclick="${onclick}" tabindex="0" ${enterKey}>
       <div class="file-icon">${icon}</div>
       <div class="file-name" title="${name}">${name}</div>
       <div class="file-meta">${size} · ${date}</div>
       <div class="file-actions">${actions}</div>
+      ${kebab}
     </div>
   `;
 }
+
+// Kebab toggle
+function toggleKebab(btn) {
+  const dd = btn.nextElementSibling;
+  const wasOpen = dd.classList.contains('open');
+  document.querySelectorAll('.kebab-dropdown.open').forEach(d => d.classList.remove('open'));
+  if (!wasOpen) dd.classList.add('open');
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.kebab-menu')) {
+    document.querySelectorAll('.kebab-dropdown.open').forEach(d => d.classList.remove('open'));
+  }
+});
 
 function getFileIcon(file) {
   const mime = (file.mimeType || '').toLowerCase();
@@ -600,16 +650,24 @@ function toast(msg, type = 'info') {
 }
 
 // ──── Drag & Drop ────
+let dragCounter = 0;
+document.addEventListener('dragenter', (e) => {
+  e.preventDefault();
+  if (!e.dataTransfer.types.includes('Files')) return;
+  dragCounter++;
+  dropOverlay.classList.remove('hidden');
+});
 document.addEventListener('dragover', (e) => {
   e.preventDefault();
-  dropOverlay.classList.remove('hidden');
 });
 document.addEventListener('dragleave', (e) => {
   e.preventDefault();
-  dropOverlay.classList.add('hidden');
+  dragCounter--;
+  if (dragCounter <= 0) { dragCounter = 0; dropOverlay.classList.add('hidden'); }
 });
 document.addEventListener('drop', (e) => {
   e.preventDefault();
+  dragCounter = 0;
   dropOverlay.classList.add('hidden');
   const files = e.dataTransfer.files;
   if (files.length) uploadFiles(files);
@@ -618,8 +676,28 @@ document.addEventListener('drop', (e) => {
 // ──── Keyboard shortcut ────
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    closePreviewModal(); closeShareModal(); closeDeleteModal(); closeNewFolderModal(); closeFolderPicker();
+    closePreviewModal(); closeShareModal(); closeDeleteModal(); closeNewFolderModal(); closeFolderPicker(); closeRenameModal();
+    return;
   }
+  // Skip if typing in an input
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  // Focus trap: don't fire shortcuts when modal is open
+  if (document.querySelector('.modal:not(.hidden)')) return;
+  if (e.key === '/' || (e.ctrlKey && e.key === 'k')) { e.preventDefault(); $('search-input').focus(); }
+  else if (e.key === 'n') { showNewFolderModal(); }
+  else if (e.key === 'u') { document.getElementById('file-input').click(); }
+});
+
+// Focus trap for modals
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Tab') return;
+  const modal = document.querySelector('.modal:not(.hidden)');
+  if (!modal) return;
+  const focusable = modal.querySelectorAll('button, input, [tabindex]:not([tabindex="-1"])');
+  if (!focusable.length) return;
+  const first = focusable[0], last = focusable[focusable.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
 });
 
 // ──── Init ────

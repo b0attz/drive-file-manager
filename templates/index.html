@@ -38,8 +38,8 @@
     </header>
 
     <!-- Search -->
-    <div class="search-bar">
-      <input type="text" id="search-input" placeholder="ค้นหาไฟล์..." onkeydown="if(event.key==='Enter')searchFiles()">
+    <div class="search-bar" role="search">
+      <input type="text" id="search-input" placeholder="ค้นหาไฟล์..." aria-label="ค้นหาไฟล์" onkeydown="if(event.key==='Enter')searchFiles()">
       <button class="btn btn-primary" onclick="searchFiles()">ค้นหา</button>
       <button class="btn btn-text" id="clear-search" onclick="clearSearch()" style="display:none">✕ ล้าง</button>
     </div>
@@ -87,21 +87,22 @@
   <!-- ═══ Modals ═══ -->
 
   <!-- Preview Modal -->
-  <div id="preview-modal" class="modal hidden">
+  <div id="preview-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="preview-title">
     <div class="modal-backdrop" onclick="closePreviewModal()"></div>
     <div class="modal-content preview-content">
-      <button class="modal-close" onclick="closePreviewModal()">✕</button>
+      <button class="modal-close" aria-label="ปิด" onclick="closePreviewModal()">✕</button>
+      <h3 id="preview-title" class="hidden">ตัวอย่างไฟล์</h3>
       <img id="preview-image" class="preview-image" src="" alt="Preview">
       <div id="preview-info" class="preview-info"></div>
     </div>
   </div>
 
   <!-- Share Modal -->
-  <div id="share-modal" class="modal hidden">
+  <div id="share-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="share-title">
     <div class="modal-backdrop" onclick="closeShareModal()"></div>
     <div class="modal-content share-content">
-      <button class="modal-close" onclick="closeShareModal()">✕</button>
-      <h3>แชร์ไฟล์</h3>
+      <button class="modal-close" aria-label="ปิด" onclick="closeShareModal()">✕</button>
+      <h3 id="share-title">แชร์ไฟล์</h3>
       <div class="share-email-row">
         <input type="email" id="share-email-input" placeholder="อีเมลผู้รับ (เว้นว่างไว้ = สร้างลิงก์สาธารณะ)">
         <button class="btn btn-primary" id="share-email-btn" onclick="shareToEmail()">ส่ง</button>
@@ -116,10 +117,10 @@
   </div>
 
   <!-- Delete Confirm Modal -->
-  <div id="delete-modal" class="modal hidden">
+  <div id="delete-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="delete-title">
     <div class="modal-backdrop" onclick="closeDeleteModal()"></div>
     <div class="modal-content delete-content">
-      <h3>ยืนยันการลบ</h3>
+      <h3 id="delete-title">ยืนยันการลบ</h3>
       <p id="delete-message">คุณต้องการลบไฟล์นี้?</p>
       <div class="modal-actions">
         <button class="btn btn-text" onclick="closeDeleteModal()">ยกเลิก</button>
@@ -129,11 +130,11 @@
   </div>
 
   <!-- New Folder Modal -->
-  <div id="new-folder-modal" class="modal hidden">
+  <div id="new-folder-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="new-folder-title">
     <div class="modal-backdrop" onclick="closeNewFolderModal()"></div>
     <div class="modal-content folder-content">
-      <button class="modal-close" onclick="closeNewFolderModal()">✕</button>
-      <h3>สร้างโฟลเดอร์ใหม่</h3>
+      <button class="modal-close" aria-label="ปิด" onclick="closeNewFolderModal()">✕</button>
+      <h3 id="new-folder-title">สร้างโฟลเดอร์ใหม่</h3>
       <input type="text" id="folder-name-input" placeholder="ชื่อโฟลเดอร์" onkeydown="if(event.key==='Enter')confirmCreateFolder()">
       <div class="modal-actions">
         <button class="btn btn-text" onclick="closeNewFolderModal()">ยกเลิก</button>
@@ -142,11 +143,25 @@
     </div>
   </div>
 
+  <!-- Rename Modal -->
+  <div id="rename-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="rename-title">
+    <div class="modal-backdrop" onclick="closeRenameModal()"></div>
+    <div class="modal-content folder-content">
+      <button class="modal-close" aria-label="ปิด" onclick="closeRenameModal()">✕</button>
+      <h3 id="rename-title">เปลี่ยนชื่อ</h3>
+      <input type="text" id="rename-input" placeholder="ชื่อใหม่" onkeydown="if(event.key==='Enter')confirmRename()">
+      <div class="modal-actions">
+        <button class="btn btn-text" onclick="closeRenameModal()">ยกเลิก</button>
+        <button class="btn btn-primary" onclick="confirmRename()">บันทึก</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Folder Picker Modal -->
-  <div id="folder-picker-modal" class="modal hidden">
+  <div id="folder-picker-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="picker-title">
     <div class="modal-backdrop" onclick="closeFolderPicker()"></div>
     <div class="modal-content picker-content">
-      <button class="modal-close" onclick="closeFolderPicker()">✕</button>
+      <button class="modal-close" aria-label="ปิด" onclick="closeFolderPicker()">✕</button>
       <h3 id="picker-title">เลือกโฟลเดอร์ปลายทาง</h3>
       <nav class="picker-breadcrumb" id="picker-breadcrumb"></nav>
       <div class="picker-grid" id="picker-grid"></div>
