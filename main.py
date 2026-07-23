@@ -79,7 +79,12 @@ def load_token(email: str) -> Credentials | None:
     if not path.exists():
         return None
     data = json.loads(path.read_text())
-    return Credentials(**data)
+    creds = Credentials(**data)
+    # Force re-auth if scope changed
+    if set(creds.scopes or []) != set(SCOPES):
+        path.unlink()
+        return None
+    return creds
 
 
 def delete_token(email: str) -> None:
