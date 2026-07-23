@@ -104,7 +104,8 @@ def create_flow() -> Flow:
 # ── FastAPI App ────────────────────────────────────────────────────────
 
 app = FastAPI(title="Google Drive File Manager")
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie="drive_session", same_site="lax", https_only=True)
+is_https = APP_URL.startswith("https")
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie="drive_session", same_site="lax", https_only=is_https)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
