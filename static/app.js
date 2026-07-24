@@ -443,7 +443,7 @@ async function loadPickerFolders() {
     } else {
       $('picker-empty').classList.add('hidden');
       grid.innerHTML = folders.map(f => `
-        <div class="picker-folder" onclick="navigatePickerFolder(${JSON.stringify(f.id)},${JSON.stringify(f.name)})">
+        <div class="picker-folder" onclick="navigatePickerFolder(${ej(f.id)},${ej(f.name)})">
           <span>📁 ${escapeHtml(f.name)}</span>
         </div>
       `).join('');
@@ -526,27 +526,27 @@ function renderFileCard(file) {
   const size = isFolder ? '—' : formatSize(file.size);
   const date = formatDate(file.modifiedTime);
   const name = escapeHtml(file.name);
-  const fid = JSON.stringify(file.id);
-  const fname = JSON.stringify(file.name);
+  const fid = ej(file.id);
+  const fname = ej(file.name);
   const cls = 'file-card';
   const onclick = isFolder
     ? (state.showingTrash ? '' : `navigateToFolder(${fid},${fname})`)
-    : `previewFile(${JSON.stringify(file)})`;
+    : `previewFile(${ej(file)})`;
 
   let actions = '';
 
   if (state.showingTrash) {
     actions = `
       <button aria-label="กู้คืน" onclick="event.stopPropagation();restoreFile(${fid})">♻️</button>
-      <button aria-label="ลบถาวร" onclick="event.stopPropagation();showPermanentDeleteConfirm(${JSON.stringify({id:file.id,name:file.name})})">🗑</button>
+      <button aria-label="ลบถาวร" onclick="event.stopPropagation();showPermanentDeleteConfirm(${ej({id:file.id,name:file.name})})">🗑</button>
     `;
   } else {
     if (!isFolder) {
       actions = `
         <button aria-label="เปลี่ยนชื่อ" onclick="event.stopPropagation();renameFile(${fid},${fname})">✏️</button>
         <button aria-label="แชร์" onclick="event.stopPropagation();shareFile(${fid},${fname})">🔗</button>
-        <button aria-label="ย้าย" onclick="event.stopPropagation();openFolderPicker('move',${fid},${fname},${JSON.stringify(state.currentFolderId)})">📂</button>
-        <button aria-label="คัดลอก" onclick="event.stopPropagation();openFolderPicker('copy',${fid},${fname},${JSON.stringify(state.currentFolderId)})">📋</button>
+        <button aria-label="ย้าย" onclick="event.stopPropagation();openFolderPicker('move',${fid},${fname},${ej(state.currentFolderId)})">📂</button>
+        <button aria-label="คัดลอก" onclick="event.stopPropagation();openFolderPicker('copy',${fid},${fname},${ej(state.currentFolderId)})">📋</button>
         <button aria-label="ดาวน์โหลด" onclick="event.stopPropagation();downloadFile(${fid},${fname})">⬇</button>
       `;
     } else {
@@ -555,23 +555,23 @@ function renderFileCard(file) {
       `;
     }
     actions += `
-      <button aria-label="ลบ" onclick="event.stopPropagation();showDeleteConfirm(${JSON.stringify({id:file.id,name:file.name})})">🗑</button>
+      <button aria-label="ลบ" onclick="event.stopPropagation();showDeleteConfirm(${ej({id:file.id,name:file.name})})">🗑</button>
     `;
   }
 
   // Kebab menu (mobile)
   const kebabItems = state.showingTrash
-    ? `<button onclick="restoreFile(${fid})">♻️ กู้คืน</button><button onclick="showPermanentDeleteConfirm(${JSON.stringify({id:file.id,name:file.name})})">🗑 ลบถาวร</button>`
+    ? `<button onclick="restoreFile(${fid})">♻️ กู้คืน</button><button onclick="showPermanentDeleteConfirm(${ej({id:file.id,name:file.name})})">🗑 ลบถาวร</button>`
     : (isFolder
       ? `<button onclick="renameFile(${fid},${fname})">✏️ เปลี่ยนชื่อ</button>`
-      : `<button onclick="renameFile(${fid},${fname})">✏️ เปลี่ยนชื่อ</button><button onclick="shareFile(${fid},${fname})">🔗 แชร์</button><button onclick="openFolderPicker('move',${fid},${fname},${JSON.stringify(state.currentFolderId)})">📂 ย้าย</button><button onclick="openFolderPicker('copy',${fid},${fname},${JSON.stringify(state.currentFolderId)})">📋 คัดลอก</button><button onclick="downloadFile(${fid},${fname})">⬇ ดาวน์โหลด</button>`
-    ) + `<button onclick="showDeleteConfirm(${JSON.stringify({id:file.id,name:file.name})})">🗑 ลบ</button>`;
+      : `<button onclick="renameFile(${fid},${fname})">✏️ เปลี่ยนชื่อ</button><button onclick="shareFile(${fid},${fname})">🔗 แชร์</button><button onclick="openFolderPicker('move',${fid},${fname},${ej(state.currentFolderId)})">📂 ย้าย</button><button onclick="openFolderPicker('copy',${fid},${fname},${ej(state.currentFolderId)})">📋 คัดลอก</button><button onclick="downloadFile(${fid},${fname})">⬇ ดาวน์โหลด</button>`
+    ) + `<button onclick="showDeleteConfirm(${ej({id:file.id,name:file.name})})">🗑 ลบ</button>`;
 
   const kebab = `<div class="kebab-menu"><button class="kebab-toggle" aria-label="เมนู" onclick="event.stopPropagation();toggleKebab(this)">⋮</button><div class="kebab-dropdown">${kebabItems}</div></div>`;
 
   const enterKey = isFolder
     ? (state.showingTrash ? '' : `onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigateToFolder(${fid},${fname})}"`)
-    : `onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();previewFile(${JSON.stringify(file)})}"`;
+    : `onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();previewFile(${ej(file)})}"`;
 
   return `
     <div class="${cls}" data-id="${file.id}" data-mime="${file.mimeType || ''}" onclick="${onclick}" tabindex="0" ${enterKey}>
@@ -637,6 +637,8 @@ function escapeHtml(s) {
   div.textContent = s;
   return div.innerHTML;
 }
+// ponytail: escapeHtml(JSON.stringify()) for onclick attrs — double quotes break HTML attributes
+const ej = (v) => escapeHtml(JSON.stringify(v));
 
 function showLoading(show) { loading.classList.toggle('hidden', !show); }
 
