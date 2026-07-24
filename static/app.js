@@ -409,18 +409,75 @@ function navigateBreadcrumb(index) {
 // ──── Preview ────
 function previewFile(file) {
   const mime = (file.mimeType || '').toLowerCase();
+  const name = file.name || '';
+  const ext = name.split('.').pop().toLowerCase();
+  const url = `/api/files/${file.id}/download`;
+  const modal = $('preview-modal');
+  const img = $('preview-image');
+  const info = $('preview-info');
+  const content = modal.querySelector('.preview-content');
+
+  // Clear previous dynamic content
+  const existing = content.querySelector('.preview-video, .preview-audio, .preview-text');
+  if (existing) existing.remove();
+
+  img.style.display = 'none';
+  info.textContent = file.name;
+
   if (mime.startsWith('image/')) {
-    $('preview-image').src = `/api/files/${file.id}/download`;
-    $('preview-info').textContent = file.name;
-    $('preview-modal').classList.remove('hidden');
+    img.src = url;
+    img.style.display = 'block';
+    modal.classList.remove('hidden');
   } else if (mime.includes('pdf')) {
-    window.open(`/api/files/${file.id}/download`, '_blank');
+    window.open(url, '_blank');
+  } else if (mime.startsWith('video/') || ['mp4','webm','ogg','mov','avi','mkv'].includes(ext)) {
+    const v = document.createElement('video');
+    v.className = 'preview-video';
+    v.src = url;
+    v.controls = true;
+    v.autoplay = true;
+    content.insertBefore(v, info);
+    modal.classList.remove('hidden');
+  } else if (mime.startsWith('audio/') || ['mp3','wav','ogg','flac','aac','m4a'].includes(ext)) {
+    const a = document.createElement('audio');
+    a.className = 'preview-audio';
+    a.src = url;
+    a.controls = true;
+    a.autoplay = true;
+    content.insertBefore(a, info);
+    content.style.background = '#1a1a2e';
+    modal.classList.remove('hidden');
+  } else if (mime.startsWith('text/') || ['json','js','ts','py','java','c','cpp','h','css','html','xml','yaml','yml','toml','ini','cfg','conf','md','txt','csv','log','sh','bat','ps1','sql','rb','go','rs','swift','kt','scala','r','mat','m','ipynb'].includes(ext)) {
+    fetch(url).then(r => r.text()).then(text => {
+      const pre = document.createElement('pre');
+      pre.className = 'preview-text';
+      pre.textContent = text;
+      content.insertBefore(pre, info);
+      content.style.background = '#1e293b';
+      modal.classList.remove('hidden');
+    }).catch(() => toast('ไม่สามารถโหลดไฟล์ได้', 'error'));
+  } else if (mime.includes('spreadsheet') || mime.includes('excel') || ['xls','xlsx','csv'].includes(ext)) {
+    window.open(`https://docs.google.com/spreadsheets/d/${file.id}/edit`, '_blank');
+  } else if (mime.includes('document') || mime.includes('word') || ['doc','docx'].includes(ext)) {
+    window.open(`https://docs.google.com/document/d/${file.id}/edit`, '_blank');
+  } else if (mime.includes('presentation') || ['ppt','pptx'].includes(ext)) {
+    window.open(`https://docs.google.com/presentation/d/${file.id}/edit`, '_blank');
   } else {
-    toast('ไม่สามารถแสดงตัวอย่างไฟล์นี้ได้', 'error');
+    downloadFile(file.id);
+    toast('ไฟล์นี้เปิดในตัวดูโดยตรงไม่ได้ กำลังดาวน์โหลด...', 'info');
   }
 }
 
-function closePreviewModal() { $('preview-modal').classList.add('hidden'); $('preview-image').src = ''; }
+function closePreviewModal() {
+  const modal = $('preview-modal');
+  const content = modal.querySelector('.preview-content');
+  const dynamic = content.querySelector('.preview-video, .preview-audio, .preview-text');
+  if (dynamic) dynamic.remove();
+  content.style.background = '';
+  $('preview-image').src = '';
+  $('preview-image').style.display = 'none';
+  modal.classList.add('hidden');
+}
 
 // ──── Download ────
 function downloadFile(fileId) {

@@ -273,6 +273,17 @@ body {
 /* Preview */
 .preview-content { padding: 0; background: #000; overflow: hidden; }
 .preview-image { max-width: 100%; max-height: 80vh; display: block; }
+.preview-video { max-width: 100%; max-height: 80vh; display: block; margin: 0 auto; }
+.preview-audio {
+  display: block; margin: auto; padding: 40px 20px;
+  width: 80%; max-width: 500px;
+}
+.preview-text {
+  max-height: 80vh; overflow: auto; padding: 20px;
+  font-family: 'Consolas', 'Monaco', monospace; font-size: 13px;
+  color: #e2e8f0; white-space: pre-wrap; word-break: break-all;
+  line-height: 1.5; margin: 0;
+}
 .preview-info {
   position: absolute; bottom: 0; left: 0; right: 0;
   background: linear-gradient(transparent, rgba(0,0,0,0.7));
