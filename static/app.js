@@ -633,11 +633,8 @@ function formatDate(dateStr) {
 
 function escapeHtml(s) {
   if (!s) return '';
-  const div = document.createElement('div');
-  div.textContent = s;
-  return div.innerHTML;
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
-// ponytail: escapeHtml(JSON.stringify()) for onclick attrs — double quotes break HTML attributes
 const ej = (v) => escapeHtml(JSON.stringify(v));
 
 function showLoading(show) { loading.classList.toggle('hidden', !show); }
