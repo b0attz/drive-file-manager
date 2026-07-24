@@ -3,6 +3,7 @@ Google Drive File Manager
 FastAPI backend — OAuth 2.0 + Google Drive API v3
 """
 
+import asyncio
 import io
 import json
 import logging
@@ -22,6 +23,7 @@ from google.auth.transport.requests import Request as GoogleRequest
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseUpload
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -169,10 +171,13 @@ async def auth_callback(request: Request, code: str = "", state: str = ""):
     creds = flow.credentials
 
     try:
-        resp = http_requests.get(
+        resp = await asyncio.to_thread(
+            http_requests.get,
             "https://www.googleapis.com/oauth2/v2/userinfo",
             headers={"Authorization": f"Bearer {creds.token}"},
+            timeout=10,
         )
+        resp.raise_for_status()
         userinfo = resp.json()
         email = userinfo["email"]
     except Exception as e:
@@ -187,6 +192,9 @@ async def auth_callback(request: Request, code: str = "", state: str = ""):
 
 @app.get("/auth/logout")
 async def auth_logout(request: Request):
+    email = request.session.get("email")
+    if email:
+        delete_token(email)
     request.session.clear()
     return RedirectResponse(url="/")
 
@@ -201,10 +209,13 @@ async def api_me(request: Request):
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     creds = load_token(email)
-    resp = http_requests.get(
+    resp = await asyncio.to_thread(
+        http_requests.get,
         "https://www.googleapis.com/oauth2/v2/userinfo",
         headers={"Authorization": f"Bearer {creds.token}"},
+        timeout=10,
     )
+    resp.raise_for_status()
     userinfo = resp.json()
     return {
         "email": userinfo.get("email"),
@@ -217,7 +228,8 @@ async def api_me(request: Request):
 
 async def _list_files(service, folder_id: str = "root", page_token: str = "", page_size: int = 50) -> dict:
     """List files (non-recursive) inside a folder, folders first."""
-    q = f"'{folder_id}' in parents and trashed = false"
+    safe_folder = folder_id.replace("\\", "\\\\").replace("'", "\\'")
+    q = f"'{safe_folder}' in parents and trashed = false"
     kwargs = {
         "q": q,
         "pageSize": min(page_size, 100),
@@ -233,17 +245,19 @@ async def _list_files(service, folder_id: str = "root", page_token: str = "", pa
 
 async def _search_files(service, query: str, folder_id: str = "") -> dict:
     """Search files by name."""
-    q = f"name contains '{query.replace(chr(39), '')}' and trashed = false"
+    safe_query = query.replace("\\", "\\\\").replace("'", "\\'")
+    q = f"name contains '{safe_query}' and trashed = false"
     if folder_id:
-        q += f" and '{folder_id}' in parents"
+        safe_folder = folder_id.replace("\\", "\\\\").replace("'", "\\'")
+        q += f" and '{safe_folder}' in parents"
     results = service.files().list(
         q=q,
         pageSize=100,
-        fields=f"files({DRIVE_FIELDS})",
+        fields=f"files({DRIVE_FIELDS}),nextPageToken",
         orderBy="folder,modifiedTime desc",
     ).execute()
     files = results.get("files", [])
-    return {"files": files}
+    return {"files": files, "nextPageToken": results.get("nextPageToken")}
 
 
 async def _upload_files(service, files: list[UploadFile], folder_id: str = "root") -> list[dict]:
@@ -275,15 +289,27 @@ async def _upload_files(service, files: list[UploadFile], folder_id: str = "root
 async def _trash_file(service, file_id: str) -> None:
     try:
         service.files().update(fileId=file_id, body={"trashed": True}).execute()
-    except Exception:
-        raise HTTPException(status_code=404, detail="File not found")
+    except HttpError as e:
+        if e.resp.status == 404:
+            raise HTTPException(status_code=404, detail="File not found")
+        logger.exception("trash file failed")
+        raise HTTPException(status_code=e.resp.status, detail=f"Trash failed: {e.reason}")
+    except Exception as e:
+        logger.exception("trash file failed")
+        raise HTTPException(status_code=500, detail=f"Trash failed: {e}")
 
 
 async def _restore_file(service, file_id: str) -> None:
     try:
         service.files().update(fileId=file_id, body={"trashed": False}).execute()
-    except Exception:
-        raise HTTPException(status_code=404, detail="File not found")
+    except HttpError as e:
+        if e.resp.status == 404:
+            raise HTTPException(status_code=404, detail="File not found")
+        logger.exception("restore file failed")
+        raise HTTPException(status_code=e.resp.status, detail=f"Restore failed: {e.reason}")
+    except Exception as e:
+        logger.exception("restore file failed")
+        raise HTTPException(status_code=500, detail=f"Restore failed: {e}")
 
 
 async def _share_file(service, file_id: str, email: str = "") -> str:
@@ -350,6 +376,7 @@ async def list_files(
     page_token: str = "",
     page_size: int = 50,
 ):
+    page_size = max(1, min(page_size, 100))
     service, _ = await get_drive_service(request)
     return await _list_files(service, folder_id, page_token, page_size)
 
@@ -399,7 +426,16 @@ async def restore_file(request: Request, file_id: str):
 @app.delete("/api/files/{file_id:str}/permanent")
 async def permanent_delete(request: Request, file_id: str):
     service, _ = await get_drive_service(request)
-    service.files().delete(fileId=file_id).execute()
+    try:
+        service.files().delete(fileId=file_id).execute()
+    except HttpError as e:
+        if e.resp.status == 404:
+            raise HTTPException(status_code=404, detail="File not found")
+        logger.exception("permanent delete failed")
+        raise HTTPException(status_code=e.resp.status, detail=f"Delete failed: {e.reason}")
+    except Exception as e:
+        logger.exception("permanent delete failed")
+        raise HTTPException(status_code=500, detail=f"Delete failed: {e}")
     return {"deleted": True}
 
 
@@ -422,7 +458,7 @@ async def download_file(request: Request, file_id: str):
     return StreamingResponse(
         iter([content]),
         media_type=mime_type,
-        headers={"Content-Disposition": "inline"},
+        headers={"Content-Disposition": f'attachment; filename="{name}"'},
     )
 
 
@@ -439,7 +475,11 @@ async def share_file(request: Request, file_id: str):
 async def move_file(request: Request, file_id: str):
     service, _ = await get_drive_service(request)
     body = await request.json()
-    result = await _move_file(service, file_id, body["folder_id"], body["old_parent_id"])
+    folder_id = body.get("folder_id")
+    old_parent_id = body.get("old_parent_id")
+    if not folder_id or not old_parent_id:
+        raise HTTPException(status_code=400, detail="folder_id and old_parent_id are required")
+    result = await _move_file(service, file_id, folder_id, old_parent_id)
     return {"file": result}
 
 
@@ -447,7 +487,10 @@ async def move_file(request: Request, file_id: str):
 async def copy_file(request: Request, file_id: str):
     service, _ = await get_drive_service(request)
     body = await request.json()
-    result = await _copy_file(service, file_id, body["folder_id"])
+    folder_id = body.get("folder_id")
+    if not folder_id:
+        raise HTTPException(status_code=400, detail="folder_id is required")
+    result = await _copy_file(service, file_id, folder_id)
     return {"file": result}
 
 
@@ -456,7 +499,7 @@ async def copy_file(request: Request, file_id: str):
 @app.post("/api/folders")
 async def create_folder(request: Request):
     body = await request.json()
-    name = body.get("name")
+    name = body.get("name", "").strip() if isinstance(body.get("name"), str) else ""
     parent_id = body.get("parent_id", "root")
     if not name:
         raise HTTPException(status_code=400, detail="Folder name is required")

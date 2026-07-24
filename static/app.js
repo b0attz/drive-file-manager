@@ -574,7 +574,7 @@ function renderFileCard(file) {
     : `onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();previewFile(${ej(file)})}"`;
 
   return `
-    <div class="${cls}" data-id="${file.id}" data-mime="${file.mimeType || ''}" onclick="${onclick}" tabindex="0" ${enterKey}>
+    <div class="${cls}" data-id="${escapeHtml(file.id)}" data-mime="${escapeHtml(file.mimeType || '')}" onclick="${onclick}" tabindex="0" ${enterKey}>
       <div class="file-icon">${icon}</div>
       <div class="file-name" title="${name}">${name}</div>
       <div class="file-meta">${size} · ${date}</div>
@@ -617,8 +617,8 @@ function formatSize(bytes) {
   if (!bytes || bytes === '0') return '0 B';
   const n = parseInt(bytes, 10);
   const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(n) / Math.log(k));
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.min(Math.floor(Math.log(n) / Math.log(k)), sizes.length - 1);
   return parseFloat((n / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
