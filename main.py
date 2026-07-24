@@ -5,9 +5,13 @@ FastAPI backend — OAuth 2.0 + Google Drive API v3
 
 import io
 import json
+import logging
 import mimetypes
 import os
 from pathlib import Path
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 import requests as http_requests
 from dotenv import load_dotenv
@@ -28,7 +32,7 @@ load_dotenv()
 GOOGLE_CLIENT_ID = os.environ["GOOGLE_CLIENT_ID"]
 GOOGLE_CLIENT_SECRET = os.environ["GOOGLE_CLIENT_SECRET"]
 SECRET_KEY = os.environ["SECRET_KEY"]
-APP_URL = os.environ.get("APP_URL", "http://localhost:8000")
+APP_URL = os.environ.get("APP_URL", "http://localhost:8000").rstrip("/")
 PORT = int(os.environ.get("PORT", 8000))
 MAX_UPLOAD_SIZE_MB = int(os.environ.get("MAX_UPLOAD_SIZE_MB", 100))
 MAX_UPLOAD_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024
@@ -148,20 +152,29 @@ async def auth_login(request: Request):
 @app.get("/auth/callback")
 async def auth_callback(request: Request, code: str = "", state: str = ""):
     saved_state = request.session.get("oauth_state")
+    logger.info("callback: state=%s saved=%s code_len=%d", state, saved_state, len(code))
     if not saved_state or saved_state != state:
+        logger.warning("callback: state mismatch saved=%s got=%s", saved_state, state)
         raise HTTPException(status_code=400, detail="State mismatch — CSRF detected")
-    flow = create_flow()
-    flow.code_verifier = request.session.get("code_verifier", "")
-    flow.fetch_token(code=code)
+    try:
+        flow = create_flow()
+        flow.code_verifier = request.session.get("code_verifier", "")
+        flow.fetch_token(code=code)
+    except Exception as e:
+        logger.exception("callback: token exchange failed")
+        raise HTTPException(status_code=500, detail=f"Token exchange failed: {e}")
     creds = flow.credentials
 
-    # Fetch user info
-    resp = http_requests.get(
-        "https://www.googleapis.com/oauth2/v2/userinfo",
-        headers={"Authorization": f"Bearer {creds.token}"},
-    )
-    userinfo = resp.json()
-    email = userinfo["email"]
+    try:
+        resp = http_requests.get(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            headers={"Authorization": f"Bearer {creds.token}"},
+        )
+        userinfo = resp.json()
+        email = userinfo["email"]
+    except Exception as e:
+        logger.exception("callback: userinfo fetch failed")
+        raise HTTPException(status_code=500, detail=f"Userinfo fetch failed: {e}")
 
     save_token(email, creds)
     request.session["email"] = email
