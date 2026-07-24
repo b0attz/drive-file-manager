@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-24T00:00:00Z",
+  "title": "Design System: Google Drive File Manager",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Deep Ink Navy",
+        "canonical": "oklch(30% 0.06 250)",
+        "tonalRamp": ["oklch(15% 0.06 250)", "oklch(20% 0.06 250)", "oklch(25% 0.06 250)", "oklch(30% 0.06 250)", "oklch(40% 0.05 250)", "oklch(55% 0.04 250)", "oklch(70% 0.03 250)", "oklch(85% 0.02 250)"]
+      },
+      "accent": {
+        "role": "accent",
+        "displayName": "Terracotta",
+        "canonical": "oklch(50% 0.14 40)",
+        "tonalRamp": ["oklch(25% 0.14 40)", "oklch(35% 0.14 40)", "oklch(42% 0.14 40)", "oklch(50% 0.14 40)", "oklch(60% 0.12 40)", "oklch(72% 0.10 40)", "oklch(84% 0.06 40)", "oklch(94% 0.03 40)"]
+      },
+      "bg-secondary": {
+        "role": "neutral",
+        "displayName": "Cool Gray",
+        "canonical": "oklch(96% 0.005 260)",
+        "tonalRamp": ["oklch(92% 0.005 260)", "oklch(93% 0.005 260)", "oklch(94% 0.005 260)", "oklch(95% 0.005 260)", "oklch(96% 0.005 260)", "oklch(97% 0.005 260)", "oklch(98% 0.003 260)", "oklch(99% 0.002 260)"]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "oklch(15% 0.02 270)",
+        "tonalRamp": ["oklch(10% 0.02 270)", "oklch(15% 0.02 270)", "oklch(22% 0.02 270)", "oklch(30% 0.02 270)", "oklch(45% 0.02 270)", "oklch(60% 0.01 270)", "oklch(75% 0.01 270)", "oklch(90% 0.005 270)"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Login heading, modal titles. Moments that demand attention." },
+      "body": { "displayName": "Body", "purpose": "File names, button labels, form inputs. The working text." },
+      "label": { "displayName": "Label", "purpose": "Search input, section labels. Slightly heavier for scannability." },
+      "meta": { "displayName": "Meta", "purpose": "File sizes, dates, timestamps. Lightest weight, smallest size." }
+    },
+    "shadows": [
+      { "name": "subtle", "value": "0 1px 2px rgba(0,0,0,0.06)", "purpose": "Default card state, input focus. Barely perceptible." },
+      { "name": "elevated", "value": "0 2px 8px rgba(0,0,0,0.1)", "purpose": "Card hover, dropdown menus. Signals interactivity." },
+      { "name": "modal", "value": "0 8px 32px rgba(0,0,0,0.16)", "purpose": "Modal content, toast notifications. Commands attention." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "ease", "purpose": "Default easing for state transitions." },
+      { "name": "ease-out", "value": "ease-out", "purpose": "Progress bar fill, reveal animations." }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px" },
+      { "name": "sm", "value": "480px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main action button. Used for upload, search, confirm actions.",
+      "html": "<button class=\"btn btn-primary\">Upload</button>",
+      "css": ".btn-primary { background: var(--primary, #1A3A5C); color: #fff; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; border: 1px solid transparent; cursor: pointer; transition: background 0.15s; } .btn-primary:hover { background: var(--primary-hover, #0F2A40); } .btn-primary:focus-visible { outline: 2px solid var(--primary, #1A3A5C); outline-offset: 2px; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary actions. New folder, cancel, secondary options.",
+      "html": "<button class=\"btn btn-outline\">New Folder</button>",
+      "css": ".btn-outline { background: var(--bg, #fff); color: var(--text-secondary, #3D3D4E); padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; border: 1px solid var(--border, #D8DCE2); cursor: pointer; transition: background 0.15s, border-color 0.15s; } .btn-outline:hover { background: var(--bg-hover, #ECEEF1); border-color: var(--text-muted, #6B6B7B); }"
+    },
+    {
+      "name": "File Card",
+      "kind": "card",
+      "refersTo": "file-card",
+      "description": "Displays a file or folder in the grid. Shows icon, name, and metadata.",
+      "html": "<div class=\"file-card\" data-mime=\"application/vnd.google-apps.folder\"><div class=\"file-icon\">📁</div><div class=\"file-name\">Documents</div><div class=\"file-meta\">— · Jan 15</div></div>",
+      "css": ".file-card { background: var(--bg, #fff); border: 1px solid var(--border, #D8DCE2); border-radius: 10px; padding: 16px; cursor: pointer; transition: box-shadow 0.15s, border-color 0.15s; position: relative; } .file-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-color: var(--primary, #1A3A5C); } .file-card:focus-visible { outline: 2px solid var(--primary, #1A3A5C); outline-offset: 2px; } .file-name { font-size: 13px; font-weight: 600; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 4px; } .file-meta { font-size: 11px; color: var(--text-muted, #6B6B7B); text-align: center; }"
+    },
+    {
+      "name": "Search Input",
+      "kind": "input",
+      "refersTo": "search-bar",
+      "description": "File search field. Full width with primary button.",
+      "html": "<div class=\"search-bar\"><input type=\"text\" placeholder=\"Search files...\"><button class=\"btn btn-primary\">Search</button></div>",
+      "css": ".search-bar { display: flex; gap: 8px; } .search-bar input { flex: 1; padding: 10px 14px; border: 1px solid var(--border, #D8DCE2); border-radius: 6px; font-size: 13px; outline: none; transition: border-color 0.15s, box-shadow 0.15s; } .search-bar input:focus { border-color: var(--primary, #1A3A5C); box-shadow: 0 0 0 2px rgba(26,58,92,0.1); }"
+    },
+    {
+      "name": "Breadcrumb",
+      "kind": "nav",
+      "refersTo": "breadcrumb",
+      "description": "Folder navigation path. Shows current location with clickable ancestors.",
+      "html": "<nav class=\"breadcrumb\"><a onclick=\"\">My Drive</a><span class=\"sep\">/</span><a onclick=\"\">Documents</a><span class=\"sep\">/</span><span class=\"current\">Projects</span></nav>",
+      "css": ".breadcrumb { display: flex; align-items: center; gap: 4px; padding: 8px 0; font-size: 13px; flex-wrap: wrap; } .breadcrumb a { color: var(--primary, #1A3A5C); text-decoration: none; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: background 0.1s; } .breadcrumb a:hover { background: var(--primary-light, #E8EDF3); } .breadcrumb .current { color: var(--text-secondary, #3D3D4E); font-weight: 600; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Clear Desk",
+    "overview": "A tool that organizes your files with the calm precision of a well-kept desk. Every element earns its place. The system rejects visual noise: no decorative gradients, no side-stripe borders, no ornamental flourishes. Depth comes from tonal layering and subtle shadows, not from color spectacle.",
+    "keyCharacteristics": ["Flat surfaces with minimal elevation", "Typography-driven hierarchy (weight and size, not color)", "Neutral palette with one authoritative primary and one functional accent", "Keyboard-first interaction with visible focus states"],
+    "rules": [
+      { "name": "The Terracotta Rule", "body": "The accent color appears only on interactive elements that perform an action (upload, share, delete). Never use it for decoration, backgrounds, or emphasis on static content.", "section": "colors" },
+      { "name": "The Weight Contrast Rule", "body": "Hierarchy is built through font-weight jumps (400 to 600), not size alone. Every heading step must differ by at least 200 weight units.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Surfaces are flat at rest. Shadows appear only as a response to state (hover, focus, modal open). If a shadow is always visible, it's too heavy.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use font-weight 600 for all headings and file names. Weight contrast is the hierarchy engine.",
+      "Do keep the terracotta accent under 15% of any screen surface. Its rarity is the point.",
+      "Do use subtle shadows (0 1px 2px) at rest, elevated shadows (0 2px 8px) on hover.",
+      "Do maintain 4.5:1 contrast for all body text. The muted gray (#6B6B7B) is the floor.",
+      "Do show focus rings (2px primary, 2px offset) on all interactive elements."
+    ],
+    "donts": [
+      "Don't use border-left or border-right greater than 1px as a colored accent on cards, list items, or callouts. This is the most recognizable AI-generated UI tell.",
+      "Don't use warm off-white backgrounds (#F5F0EB, #FAF7F2, #FEFCF8). These read as cream/sand/parchment and signal AI defaults. Use cool neutrals.",
+      "Don't apply background-clip: text with gradients. Decorative text is never meaningful.",
+      "Don't use glassmorphism (backdrop-filter blur) decoratively. Rare and purposeful, or nothing.",
+      "Don't pair a 1px border with a box-shadow wider than 8px blur. Pick one, not both.",
+      "Don't use border-radius greater than 16px on cards. Full-pill is fine for tags and buttons only."
+    ]
+  }
+}
