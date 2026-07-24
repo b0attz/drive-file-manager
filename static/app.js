@@ -26,6 +26,7 @@ const uploadProgress = $('upload-progress');
 const progressFill = $('progress-fill');
 const progressText = $('progress-text');
 const dropOverlay = $('drop-overlay');
+const fileListHeader = $('file-list-header');
 
 // ──── API helpers ────
 async function api(path, opts = {}) {
@@ -71,7 +72,23 @@ function showApp() {
   const info = state.user;
   $('user-avatar').src = info.picture || '';
   $('user-email').textContent = info.email;
-  $('user-info').style.display = 'flex';
+}
+
+// ──── Sidebar navigation ────
+function navigateToRoot() {
+  state.showingTrash = false;
+  state.searching = false;
+  state.breadcrumb = [{ id: 'root', name: 'My Drive' }];
+  state.currentFolderId = 'root';
+  $('search-input').value = '';
+  $('clear-search').style.display = 'none';
+  updateSidebarActive();
+  loadFiles();
+}
+
+function updateSidebarActive() {
+  $('nav-my-drive').classList.toggle('active', !state.showingTrash);
+  $('nav-trash').classList.toggle('active', state.showingTrash);
 }
 
 // ──── File list ────
@@ -128,7 +145,6 @@ async function uploadFiles(fileList) {
   if (!fileList || !fileList.length) return;
   const files = [...fileList];
 
-  // Filter oversized
   const maxBytes = window.MAX_UPLOAD_BYTES || 100 * 1024 * 1024;
   const ok = files.filter(f => f.size <= maxBytes);
   const oversized = files.filter(f => f.size > maxBytes);
@@ -174,7 +190,6 @@ async function uploadFiles(fileList) {
     progressText.textContent = `กำลังอัปโหลด (${completed}/${total}): ${file.name}`;
   });
 
-  // Upload 3 at a time
   const concurrency = 3;
   for (let i = 0; i < ok.length; i += concurrency) {
     await Promise.all(ok.slice(i, i + concurrency).map(uploadOne));
@@ -192,7 +207,7 @@ let deleteTarget = null;
 
 function showDeleteConfirm(file) {
   deleteTarget = file;
-  $('delete-message').textContent = `คุณต้องการลบ "${file.name}"?`;
+  $('delete-message').textContent = `ย้าย "${file.name}" ไปที่ถังขยะ?`;
   $('delete-confirm-btn').onclick = confirmDelete;
   $('delete-modal').classList.remove('hidden');
 }
@@ -202,7 +217,7 @@ async function confirmDelete() {
   $('delete-modal').classList.add('hidden');
   try {
     await api(`/api/files/${deleteTarget.id}`, { method: 'DELETE' });
-    toast(`ลบ "${deleteTarget.name}" สำเร็จ`, 'success');
+    toast(`ลบ "${deleteTarget.name}" แล้ว`, 'success');
     state.files = state.files.filter(f => f.id !== deleteTarget.id);
     deleteTarget = null;
     renderAll();
@@ -215,7 +230,7 @@ function closeDeleteModal() { $('delete-modal').classList.add('hidden'); deleteT
 
 function showPermanentDeleteConfirm(file) {
   deleteTarget = file;
-  $('delete-message').textContent = `คุณต้องการลบ "${file.name}" ถาวร? (ไม่สามารถกู้คืนได้)`;
+  $('delete-message').textContent = `ลบ "${file.name}" ถาวร? (ไม่สามารถกู้คืนได้)`;
   $('delete-confirm-btn').onclick = confirmPermanentDelete;
   $('delete-modal').classList.remove('hidden');
 }
@@ -261,11 +276,12 @@ async function confirmRename() {
   } catch (e) { toast(e.message, 'error'); }
 }
 
-// ──── Trash View ────
+// ──── Trash ────
 async function toggleTrash() {
   state.showingTrash = !state.showingTrash;
-  $('trash-btn').textContent = state.showingTrash ? '← กลับ' : '🗑 ถังขยะ';
+  updateSidebarActive();
   if (state.showingTrash) {
+    state.breadcrumb = [{ id: 'root', name: 'ถังขยะ' }];
     $('search-input').value = '';
     $('clear-search').style.display = 'none';
     showLoading(true);
@@ -278,7 +294,7 @@ async function toggleTrash() {
     } catch (e) { toast(e.message, 'error'); }
     finally { showLoading(false); }
   } else {
-    loadFiles();
+    navigateToRoot();
   }
 }
 
@@ -302,7 +318,7 @@ function shareFile(fileId, fileName) {
   $('share-link-input').value = '';
   $('share-link-input').parentElement.style.display = 'none';
   $('share-status').textContent = '';
-  $('share-email-btn').textContent = 'แชร์';
+  $('share-email-btn').textContent = 'ส่ง';
   $('share-email-btn').disabled = false;
   $('share-modal').classList.remove('hidden');
   $('share-email-input').focus();
@@ -310,7 +326,7 @@ function shareFile(fileId, fileName) {
 
 async function shareToEmail() {
   const email = $('share-email-input').value.trim();
-  if (!email && !confirm('ไม่กรอกอีเมล = สร้างลิงก์สาธารณะ ใครก็เข้าถึงไฟล์นี้ได้\n\nต้องการดำเนินการต่อ?')) return;
+  if (!email && !confirm('ไม่กรอกอีเมล = สร้างลิงก์สาธารณะ\n\nต้องการดำเนินการต่อ?')) return;
   const btn = $('share-email-btn');
   btn.textContent = 'กำลังแชร์...';
   btn.disabled = true;
@@ -322,15 +338,15 @@ async function shareToEmail() {
     $('share-link-input').value = data.link;
     $('share-link-input').parentElement.style.display = 'flex';
     if (email) {
-      $('share-status').textContent = `✅ แชร์ "${shareTargetName}" ให้ ${email} แล้ว`;
+      $('share-status').textContent = `แชร์ "${shareTargetName}" ให้ ${email} แล้ว`;
     } else {
-      $('share-status').textContent = '✅ สร้างลิงก์สาธารณะแล้ว';
+      $('share-status').textContent = 'สร้างลิงก์สาธารณะแล้ว';
     }
     btn.textContent = 'แชร์ซ้ำ';
     btn.disabled = false;
   } catch (e) {
     toast(e.message, 'error');
-    btn.textContent = 'แชร์';
+    btn.textContent = 'ส่ง';
     btn.disabled = false;
   }
 }
@@ -342,11 +358,11 @@ async function copyShareLink() {
   if (!input.value) return;
   try {
     await navigator.clipboard.writeText(input.value);
-    toast('คัดลอกลิงก์แล้ว', 'success');
+    toast('คัดลอกแล้ว', 'success');
   } catch (_) {
     input.select();
     document.execCommand('copy');
-    toast('คัดลอกลิงก์แล้ว', 'success');
+    toast('คัดลอกแล้ว', 'success');
   }
 }
 
@@ -363,7 +379,7 @@ async function confirmCreateFolder() {
       method: 'POST',
       body: JSON.stringify({ name, parent_id: state.currentFolderId }),
     });
-    toast(`สร้างโฟลเดอร์ "${name}" สำเร็จ`, 'success');
+    toast(`สร้าง "${name}" แล้ว`, 'success');
     loadFiles();
   } catch (e) {
     toast(e.message, 'error');
@@ -407,12 +423,12 @@ function previewFile(file) {
 function closePreviewModal() { $('preview-modal').classList.add('hidden'); $('preview-image').src = ''; }
 
 // ──── Download ────
-function downloadFile(fileId, fileName) {
+function downloadFile(fileId) {
   window.open(`/api/files/${fileId}/download`, '_blank');
 }
 
 // ──── Move / Copy ────
-let pickerMode = 'move'; // 'move' or 'copy'
+let pickerMode = 'move';
 let pickerTargetId = null;
 let pickerTargetName = '';
 let pickerStack = [{ id: 'root', name: 'My Drive' }];
@@ -423,7 +439,7 @@ function openFolderPicker(mode, fileId, fileName, oldParentId) {
   pickerTargetName = fileName;
   pickerStack = [{ id: oldParentId || 'root', name: '...' }];
   $('picker-title').textContent = mode === 'move' ? `ย้าย "${fileName}"` : `คัดลอก "${fileName}"`;
-  $('picker-confirm-btn').textContent = mode === 'move' ? 'ย้ายที่นี่' : 'คัดลอกที่นี่';
+  $('picker-confirm-btn').textContent = mode === 'move' ? 'ย้าย' : 'คัดลอก';
   $('picker-confirm-btn').dataset.fileId = fileId;
   $('picker-confirm-btn').dataset.oldParentId = oldParentId || '';
   $('folder-picker-modal').classList.remove('hidden');
@@ -444,7 +460,7 @@ async function loadPickerFolders() {
       $('picker-empty').classList.add('hidden');
       grid.innerHTML = folders.map(f => `
         <div class="picker-folder" onclick="navigatePickerFolder(${ej(f.id)},${ej(f.name)})">
-          <span>📁 ${escapeHtml(f.name)}</span>
+          ${folderSvg()} ${escapeHtml(f.name)}
         </div>
       `).join('');
     }
@@ -477,13 +493,13 @@ async function confirmFolderPick() {
         method: 'POST',
         body: JSON.stringify({ folder_id: folderId, old_parent_id: oldParentId }),
       });
-      toast(`ย้าย "${pickerTargetName}" สำเร็จ`, 'success');
+      toast(`ย้าย "${pickerTargetName}" แล้ว`, 'success');
     } else {
       await api(`/api/files/${fileId}/copy`, {
         method: 'POST',
         body: JSON.stringify({ folder_id: folderId }),
       });
-      toast(`คัดลอก "${pickerTargetName}" สำเร็จ`, 'success');
+      toast(`คัดลอก "${pickerTargetName}" แล้ว`, 'success');
     }
     loadFiles();
   } catch (e) { toast(e.message, 'error'); }
@@ -491,102 +507,133 @@ async function confirmFolderPick() {
 
 function closeFolderPicker() { $('folder-picker-modal').classList.add('hidden'); }
 
+// ──── SVG Icons ────
+function folderSvg() {
+  return '<svg width="20" height="20" viewBox="0 0 24 24" fill="#5f6368"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>';
+}
+
+function getFileIconSvg(file) {
+  const mime = (file.mimeType || '').toLowerCase();
+  if (mime === 'application/vnd.google-apps.folder') return folderSvg();
+  if (mime.startsWith('image/')) return '<svg width="20" height="20" viewBox="0 0 24 24" fill="#ea4335"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>';
+  if (mime.startsWith('video/')) return '<svg width="20" height="20" viewBox="0 0 24 24" fill="#ea4335"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/></svg>';
+  if (mime.includes('pdf')) return '<svg width="20" height="20" viewBox="0 0 24 24" fill="#ea4335"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/></svg>';
+  if (mime.startsWith('text/')) return '<svg width="20" height="20" viewBox="0 0 24 24" fill="#4285f4"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>';
+  if (mime.includes('spreadsheet') || mime.includes('sheet')) return '<svg width="20" height="20" viewBox="0 0 24 24" fill="#0f9d58"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 2v3H5V5h14zm-9 5h4v4h-4v-4zM5 10h4v4H5v-4zm0 9v-3h4v3H5zm6 0v-3h4v3h-4zm8 0h-4v-3h4v3zm0-5h-4v-4h4v4z"/></svg>';
+  if (mime.includes('presentation') || mime.includes('slide')) return '<svg width="20" height="20" viewBox="0 0 24 24" fill="#f4b400"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 15h10v2H7v-2zm0-4h10v2H7v-2zm0-4h10v2H7V7z"/></svg>';
+  if (mime.includes('zip') || mime.includes('rar') || mime.includes('tar')) return '<svg width="20" height="20" viewBox="0 0 24 24" fill="#5f6368"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6 10h-2v-2h2v2zm0-4h-2V8h2v4z"/></svg>';
+  if (mime.startsWith('audio/')) return '<svg width="20" height="20" viewBox="0 0 24 24" fill="#ea4335"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>';
+  return '<svg width="20" height="20" viewBox="0 0 24 24" fill="#5f6368"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>';
+}
+
 // ──── Rendering ────
 function renderAll() {
   renderBreadcrumb();
-  renderFileGrid();
-  loadMoreBtn.classList.toggle('hidden', !state.nextPageToken || state.searching || state.showingTrash);
+  renderFileList();
+  const isTrashOrSearch = state.searching || state.showingTrash;
+  loadMoreBtn.classList.toggle('hidden', !state.nextPageToken || isTrashOrSearch);
   const empty = !state.files.length;
   emptyState.classList.toggle('hidden', !empty);
-  fileGrid.classList.toggle('hidden', empty);
-  emptyState.innerHTML = empty
-    ? (state.showingTrash ? '<p>ถังขยะว่าง</p>' : state.searching ? '<p>ไม่พบผลลัพธ์</p>' : '<p>ยังไม่มีไฟล์ในโฟลเดอร์นี้</p><p class="empty-hint">ลากไฟล์มาวางหรือกด "อัปโหลด" เพื่อเพิ่มไฟล์</p>')
-    : '';
+  $('file-list').classList.toggle('hidden', empty);
+  if (fileListHeader) fileListHeader.classList.toggle('hidden', empty);
 }
 
 function renderBreadcrumb() {
   if (state.showingTrash) {
-    breadcrumb.innerHTML = '<span class="current">🗑 ถังขยะ</span>';
+    breadcrumb.innerHTML = '<span class="current">ถังขยะ</span>';
     return;
   }
   breadcrumb.innerHTML = state.breadcrumb.map((item, idx) => {
     const isLast = idx === state.breadcrumb.length - 1;
     if (isLast) return `<span class="current">${escapeHtml(item.name)}</span>`;
-    return `<a onclick="navigateBreadcrumb(${idx})">${escapeHtml(item.name)}</a><span class="sep">/</span>`;
+    return `<a onclick="navigateBreadcrumb(${idx})">${escapeHtml(item.name)}</a><span class="sep">›</span>`;
   }).join('');
 }
 
-function renderFileGrid() {
-  fileGrid.innerHTML = state.files.map(file => renderFileCard(file)).join('');
+function renderFileList() {
+  fileGrid.innerHTML = state.files.map(file => renderFileRow(file)).join('');
 }
 
-function renderFileCard(file) {
+function renderFileRow(file) {
   const isFolder = file.mimeType === 'application/vnd.google-apps.folder';
-  const icon = getFileIcon(file);
-  const size = isFolder ? '—' : formatSize(file.size);
+  const icon = getFileIconSvg(file);
+  const size = isFolder ? '' : formatSize(file.size);
   const date = formatDate(file.modifiedTime);
   const name = escapeHtml(file.name);
   const fid = ej(file.id);
   const fname = ej(file.name);
-  const cls = 'file-card';
   const onclick = isFolder
     ? (state.showingTrash ? '' : `navigateToFolder(${fid},${fname})`)
     : `previewFile(${ej(file)})`;
-
-  let actions = '';
-
-  if (state.showingTrash) {
-    actions = `
-      <button aria-label="กู้คืน" onclick="event.stopPropagation();restoreFile(${fid})">♻️</button>
-      <button aria-label="ลบถาวร" onclick="event.stopPropagation();showPermanentDeleteConfirm(${ej({id:file.id,name:file.name})})">🗑</button>
-    `;
-  } else {
-    if (!isFolder) {
-      actions = `
-        <button aria-label="เปลี่ยนชื่อ" onclick="event.stopPropagation();renameFile(${fid},${fname})">✏️</button>
-        <button aria-label="แชร์" onclick="event.stopPropagation();shareFile(${fid},${fname})">🔗</button>
-        <button aria-label="ย้าย" onclick="event.stopPropagation();openFolderPicker('move',${fid},${fname},${ej(state.currentFolderId)})">📂</button>
-        <button aria-label="คัดลอก" onclick="event.stopPropagation();openFolderPicker('copy',${fid},${fname},${ej(state.currentFolderId)})">📋</button>
-        <button aria-label="ดาวน์โหลด" onclick="event.stopPropagation();downloadFile(${fid},${fname})">⬇</button>
-      `;
-    } else {
-      actions = `
-        <button aria-label="เปลี่ยนชื่อ" onclick="event.stopPropagation();renameFile(${fid},${fname})">✏️</button>
-      `;
-    }
-    actions += `
-      <button aria-label="ลบ" onclick="event.stopPropagation();showDeleteConfirm(${ej({id:file.id,name:file.name})})">🗑</button>
-    `;
-  }
-
-  // Kebab menu (mobile)
-  const kebabItems = state.showingTrash
-    ? `<button onclick="restoreFile(${fid})">♻️ กู้คืน</button><button onclick="showPermanentDeleteConfirm(${ej({id:file.id,name:file.name})})">🗑 ลบถาวร</button>`
-    : (isFolder
-      ? `<button onclick="renameFile(${fid},${fname})">✏️ เปลี่ยนชื่อ</button>`
-      : `<button onclick="renameFile(${fid},${fname})">✏️ เปลี่ยนชื่อ</button><button onclick="shareFile(${fid},${fname})">🔗 แชร์</button><button onclick="openFolderPicker('move',${fid},${fname},${ej(state.currentFolderId)})">📂 ย้าย</button><button onclick="openFolderPicker('copy',${fid},${fname},${ej(state.currentFolderId)})">📋 คัดลอก</button><button onclick="downloadFile(${fid},${fname})">⬇ ดาวน์โหลด</button>`
-    ) + `<button onclick="showDeleteConfirm(${ej({id:file.id,name:file.name})})">🗑 ลบ</button>`;
-
-  const kebab = `<div class="kebab-menu"><button class="kebab-toggle" aria-label="เมนู" onclick="event.stopPropagation();toggleKebab(this)">⋮</button><div class="kebab-dropdown">${kebabItems}</div></div>`;
 
   const enterKey = isFolder
     ? (state.showingTrash ? '' : `onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigateToFolder(${fid},${fname})}"`)
     : `onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();previewFile(${ej(file)})}"`;
 
+  let actions = '';
+  if (state.showingTrash) {
+    actions = `
+      <button aria-label="กู้คืน" onclick="event.stopPropagation();restoreFile(${fid})" title="กู้คืน">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 109-9"/><polyline points="3 3 3 8 8 8"/></svg>
+      </button>
+      <button aria-label="ลบถาวร" onclick="event.stopPropagation();showPermanentDeleteConfirm(${ej({id:file.id,name:file.name})})" title="ลบถาวร">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+      </button>`;
+  } else {
+    actions = `
+      <button aria-label="เพิ่มเติม" onclick="event.stopPropagation();toggleKebab(this)" title="เพิ่มเติม">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+      </button>`;
+
+    const kebabItems = isFolder
+      ? `<button onclick="renameFile(${fid},${fname})">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+          เปลี่ยนชื่อ
+        </button>`
+      : `<button onclick="renameFile(${fid},${fname})">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+          เปลี่ยนชื่อ
+        </button>
+        <button onclick="shareFile(${fid},${fname})">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          แชร์
+        </button>
+        <button onclick="openFolderPicker('move',${fid},${fname},${ej(state.currentFolderId)})">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          ย้าย
+        </button>
+        <button onclick="openFolderPicker('copy',${fid},${fname},${ej(state.currentFolderId)})">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          คัดลอก
+        </button>
+        <button onclick="downloadFile(${fid})">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          ดาวน์โหลด
+        </button>`;
+    actions += `<div class="kebab-menu"><div class="kebab-dropdown">${kebabItems}
+      <button onclick="showDeleteConfirm(${ej({id:file.id,name:file.name})})">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+        ลบ
+      </button>
+    </div></div>`;
+  }
+
   return `
-    <div class="${cls}" data-id="${escapeHtml(file.id)}" data-mime="${escapeHtml(file.mimeType || '')}" onclick="${onclick}" tabindex="0" ${enterKey}>
-      <div class="file-icon">${icon}</div>
-      <div class="file-name" title="${name}">${name}</div>
-      <div class="file-meta">${size} · ${date}</div>
-      <div class="file-actions">${actions}</div>
-      ${kebab}
-    </div>
-  `;
+    <div class="file-row" data-id="${escapeHtml(file.id)}" data-mime="${escapeHtml(file.mimeType || '')}" onclick="${onclick}" tabindex="0" ${enterKey}>
+      <div class="file-name-cell">
+        <span class="file-icon-cell">${icon}</span>
+        <span class="file-name-text" title="${name}">${name}</span>
+      </div>
+      <span class="file-owner">ฉัน</span>
+      <span class="file-date">${date}</span>
+      <span class="file-size">${size}</span>
+      <div class="file-actions-cell">${actions}</div>
+    </div>`;
 }
 
-// Kebab toggle
+// ──── Kebab ────
 function toggleKebab(btn) {
-  const dd = btn.nextElementSibling;
+  const dd = btn.closest('.file-actions-cell').querySelector('.kebab-dropdown');
   const wasOpen = dd.classList.contains('open');
   document.querySelectorAll('.kebab-dropdown.open').forEach(d => d.classList.remove('open'));
   if (!wasOpen) dd.classList.add('open');
@@ -597,24 +644,9 @@ document.addEventListener('click', (e) => {
   }
 });
 
-function getFileIcon(file) {
-  const mime = (file.mimeType || '').toLowerCase();
-  const thumb = file.thumbnailLink || file.iconLink;
-  if (thumb && mime.startsWith('image/')) return `<img src="${thumb}" alt="">`;
-  if (mime === 'application/vnd.google-apps.folder') return '📁';
-  if (mime.startsWith('image/')) return '🖼️';
-  if (mime.startsWith('video/')) return '🎬';
-  if (mime.includes('pdf')) return '📄';
-  if (mime.startsWith('text/')) return '📝';
-  if (mime.includes('spreadsheet') || mime.includes('sheet')) return '📊';
-  if (mime.includes('presentation') || mime.includes('slide')) return '📽';
-  if (mime.includes('zip') || mime.includes('rar') || mime.includes('tar')) return '📦';
-  return '📋';
-}
-
 // ──── Utility ────
 function formatSize(bytes) {
-  if (!bytes || bytes === '0') return '0 B';
+  if (!bytes || bytes === '0') return '—';
   const n = parseInt(bytes, 10);
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -672,22 +704,20 @@ document.addEventListener('drop', (e) => {
   if (files.length) uploadFiles(files);
 });
 
-// ──── Keyboard shortcut ────
+// ──── Keyboard shortcuts ────
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     closePreviewModal(); closeShareModal(); closeDeleteModal(); closeNewFolderModal(); closeFolderPicker(); closeRenameModal();
     return;
   }
-  // Skip if typing in an input
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-  // Focus trap: don't fire shortcuts when modal is open
   if (document.querySelector('.modal:not(.hidden)')) return;
   if (e.key === '/' || (e.ctrlKey && e.key === 'k')) { e.preventDefault(); $('search-input').focus(); }
   else if (e.key === 'n') { showNewFolderModal(); }
   else if (e.key === 'u') { document.getElementById('file-input').click(); }
 });
 
-// Focus trap for modals
+// Focus trap
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Tab') return;
   const modal = document.querySelector('.modal:not(.hidden)');
