@@ -650,6 +650,7 @@ function renderFileRow(file) {
     : `previewFile(${ej(file)})`;
   const selectOnclick = `event.stopPropagation();toggleSelect(${fid},event)`;
   const contextHandler = `oncontextmenu="showContextMenu(${fid},event)"`;
+  const owner = file.owners && file.owners[0] ? escapeHtml(file.owners[0].displayName || file.owners[0].emailAddress || '—') : '—';
 
   const enterKey = isFolder
     ? (state.showingTrash ? '' : `onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigateToFolder(${fid},${fname})}"`)
@@ -710,7 +711,7 @@ function renderFileRow(file) {
         <span class="file-icon-cell">${icon}</span>
         <span class="file-name-text" title="${name}">${name}</span>
       </div>
-      <span class="file-owner">ฉัน</span>
+      <span class="file-owner">${owner}</span>
       <span class="file-date">${date}</span>
       <span class="file-size">${size}</span>
       <div class="file-actions-cell">${actions}</div>

@@ -50,7 +50,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/userinfo.profile",
 ]
 
-DRIVE_FIELDS = "id,name,mimeType,size,modifiedTime,thumbnailLink,webViewLink,iconLink"
+DRIVE_FIELDS = "id,name,mimeType,size,modifiedTime,thumbnailLink,webViewLink,iconLink,owners(displayName,emailAddress)"
 
 CLIENT_CONFIG = {
     "web": {
