@@ -3,21 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Google Drive</title>
+  <title>Vault - ที่จัดเก็บไฟล์ของคุณ</title>
   <link rel="stylesheet" href="/static/style.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
   <!-- ═══ Login ═══ -->
   <div id="login-container">
     <div class="login-card">
       <div class="login-logo">
-        <svg width="48" height="48" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-21.3 36.95c-.8 1.4-1.2 2.95-1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5 0-1.55-.4-3.1-1.2-4.5l-13.75-23.8-14.55 25.2 14.55 25.2z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53-7.65-13.25h-27.5l7.65 13.25z" fill="#2684fc"/><path d="m73.4 26.5-13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2l14.55 25.2z" fill="#ffba00"/></svg>
-        <span class="app-title">Google Drive</span>
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="8" width="40" height="8" rx="4" fill="#6366f1"/>
+          <rect x="4" y="20" width="40" height="8" rx="4" fill="#818cf8"/>
+          <rect x="4" y="32" width="40" height="8" rx="4" fill="#a5b4fc"/>
+          <circle cx="36" cy="12" r="3" fill="#4f46e5"/>
+          <circle cx="36" cy="24" r="3" fill="#6366f1"/>
+          <circle cx="36" cy="36" r="3" fill="#818cf8"/>
+        </svg>
+        <span class="app-title">Vault</span>
       </div>
       <h1>เข้าสู่ระบบ</h1>
-      <p class="login-subtitle">ใช้บัญชี Google เพื่อเข้าถึงไฟล์ของคุณ</p>
+      <p class="login-subtitle">เชื่อมต่อบัญชี Google ของคุณเพื่อจัดการไฟล์</p>
       <button class="google-btn" onclick="login()">
         <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.54 28.59A14.5 14.5 0 019.5 24c0-1.59.28-3.14.76-4.59l-7.98-6.19A23.99 23.99 0 000 24c0 3.77.87 7.35 2.56 10.56l7.98-5.97z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 5.97C6.51 42.62 14.62 48 24 48z"/></svg>
         <span>Sign in with Google</span>
@@ -30,13 +35,20 @@
     <!-- Header -->
     <header class="app-header">
       <div class="header-left">
-        <svg width="32" height="32" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-21.3 36.95c-.8 1.4-1.2 2.95-1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5 0-1.55-.4-3.1-1.2-4.5l-13.75-23.8-14.55 25.2 14.55 25.2z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53-7.65-13.25h-27.5l7.65 13.25z" fill="#2684fc"/><path d="m73.4 26.5-13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2l14.55 25.2z" fill="#ffba00"/></svg>
-        <span class="app-title">Drive</span>
+        <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="8" width="40" height="8" rx="4" fill="#6366f1"/>
+          <rect x="4" y="20" width="40" height="8" rx="4" fill="#818cf8"/>
+          <rect x="4" y="32" width="40" height="8" rx="4" fill="#a5b4fc"/>
+          <circle cx="36" cy="12" r="3" fill="#4f46e5"/>
+          <circle cx="36" cy="24" r="3" fill="#6366f1"/>
+          <circle cx="36" cy="36" r="3" fill="#818cf8"/>
+        </svg>
+        <span class="app-title">Vault</span>
       </div>
       <div class="header-center">
         <div class="search-bar" role="search">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input type="text" id="search-input" placeholder="ค้นหาใน Drive" aria-label="ค้นหาไฟล์" onkeydown="if(event.key==='Enter')searchFiles()">
+          <input type="text" id="search-input" placeholder="ค้นหาไฟล์..." aria-label="ค้นหาไฟล์" onkeydown="if(event.key==='Enter')searchFiles()">
           <button id="clear-search" onclick="clearSearch()" style="display:none">✕</button>
         </div>
       </div>
@@ -100,7 +112,14 @@
         </div>
         <div id="load-more" class="load-more hidden"><button class="btn btn-outline" onclick="loadMore()">โหลดเพิ่มเติม...</button></div>
         <div id="empty-state" class="empty-state hidden">
-          <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="#dadce0" stroke-width="0.5"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+          <svg width="120" height="120" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="4" y="8" width="40" height="8" rx="4" fill="#e2e8f0"/>
+            <rect x="4" y="20" width="40" height="8" rx="4" fill="#e2e8f0"/>
+            <rect x="4" y="32" width="40" height="8" rx="4" fill="#e2e8f0"/>
+            <circle cx="36" cy="12" r="3" fill="#cbd5e1"/>
+            <circle cx="36" cy="24" r="3" fill="#cbd5e1"/>
+            <circle cx="36" cy="36" r="3" fill="#cbd5e1"/>
+          </svg>
           <p>ยังไม่มีไฟล์</p>
           <p class="empty-hint">ลากไฟล์มาวางที่นี่ หรือกด "สร้างใหม่" เพื่อเริ่มต้น</p>
         </div>

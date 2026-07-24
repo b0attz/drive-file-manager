@@ -6,7 +6,7 @@
 const state = {
   user: null,
   currentFolderId: 'root',
-  breadcrumb: [{ id: 'root', name: 'My Drive' }],
+  breadcrumb: [{ id: 'root', name: 'ไฟล์ของฉัน' }],
   files: [],
   nextPageToken: null,
   searching: false,
@@ -78,7 +78,7 @@ function showApp() {
 function navigateToRoot() {
   state.showingTrash = false;
   state.searching = false;
-  state.breadcrumb = [{ id: 'root', name: 'My Drive' }];
+  state.breadcrumb = [{ id: 'root', name: 'ไฟล์ของฉัน' }];
   state.currentFolderId = 'root';
   $('search-input').value = '';
   $('clear-search').style.display = 'none';
@@ -431,7 +431,7 @@ function downloadFile(fileId) {
 let pickerMode = 'move';
 let pickerTargetId = null;
 let pickerTargetName = '';
-let pickerStack = [{ id: 'root', name: 'My Drive' }];
+let pickerStack = [{ id: 'root', name: 'ไฟล์ของฉัน' }];
 
 function openFolderPicker(mode, fileId, fileName, oldParentId) {
   pickerMode = mode;

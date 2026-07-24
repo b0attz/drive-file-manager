@@ -1,26 +1,26 @@
-/* ── Google Drive Style ─────────────────────────────────────────────── */
+/* ── Vault - File Storage ──────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --blue: #1a73e8;
-  --blue-hover: #1557b0;
-  --blue-light: #e8f0fe;
-  --text: #202124;
-  --text-secondary: #5f6368;
-  --text-muted: #80868b;
-  --border: #dadce0;
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --primary-light: #eef2ff;
+  --text: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --border: #e2e8f0;
   --bg: #ffffff;
-  --bg-secondary: #f8f9fa;
-  --bg-hover: #f1f3f4;
-  --danger: #c5221f;
-  --danger-hover: #a50e0e;
-  --shadow: 0 1px 2px rgba(60,64,67,0.1), 0 1px 3px rgba(60,64,67,0.15);
+  --bg-secondary: #f8fafc;
+  --bg-hover: #f1f5f9;
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
   --radius: 8px;
-  --radius-sm: 4px;
+  --radius-sm: 6px;
 }
 
 body {
-  font-family: "Google Sans", "Segoe UI", Roboto, Arial, sans-serif;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   color: var(--text);
   background: var(--bg);
   min-height: 100vh;
@@ -58,8 +58,8 @@ body {
   border: none; transition: background 0.15s;
   white-space: nowrap;
 }
-.btn-primary { background: var(--blue); color: #fff; }
-.btn-primary:hover { background: var(--blue-hover); }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-hover); }
 .btn-outline { background: var(--bg); color: var(--text-secondary); border: 1px solid var(--border); }
 .btn-outline:hover { background: var(--bg-secondary); border-color: var(--text-muted); }
 .btn-text { background: transparent; color: var(--text-secondary); }
@@ -123,7 +123,7 @@ body {
   transition: background 0.1s; margin-right: 8px;
 }
 .sidebar-nav li:hover { background: var(--bg-hover); }
-.sidebar-nav li.active { background: var(--blue-light); color: var(--blue); font-weight: 500; }
+.sidebar-nav li.active { background: var(--primary-light); color: var(--primary); font-weight: 500; }
 .sidebar-nav li svg { flex-shrink: 0; }
 
 /* ── Main Content ──────────────────────────────────────────────────── */
@@ -157,7 +157,7 @@ body {
 }
 .spinner {
   width: 20px; height: 20px; border: 2px solid var(--border);
-  border-top-color: var(--blue); border-radius: 50%;
+  border-top-color: var(--primary); border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -177,8 +177,8 @@ body {
   transition: background 0.1s; font-size: 13px;
 }
 .file-row:hover { background: var(--bg-hover); }
-.file-row:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
-.file-row.selected { background: var(--blue-light); }
+.file-row:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.file-row.selected { background: var(--primary-light); }
 
 .file-name-cell {
   display: flex; align-items: center; gap: 12px; min-width: 0;
@@ -221,7 +221,7 @@ body {
   height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;
 }
 .progress-fill {
-  height: 100%; background: var(--blue); border-radius: 2px;
+  height: 100%; background: var(--primary); border-radius: 2px;
   width: 0%; transition: width 0.3s ease-out;
 }
 
@@ -229,10 +229,10 @@ body {
 .drop-overlay {
   position: fixed; inset: 0; background: rgba(255,255,255,0.95);
   display: flex; align-items: center; justify-content: center;
-  z-index: 9999; border: 3px dashed var(--blue); margin: 8px;
+  z-index: 9999; border: 3px dashed var(--primary); margin: 8px;
   border-radius: var(--radius);
 }
-.drop-content { text-align: center; color: var(--blue); }
+.drop-content { text-align: center; color: var(--primary); }
 .drop-content p { font-size: 16px; font-weight: 500; margin-top: 12px; }
 
 /* ── Toast ─────────────────────────────────────────────────────────── */
@@ -285,7 +285,7 @@ body {
   flex: 1; padding: 8px 12px; border: 1px solid var(--border);
   border-radius: var(--radius-sm); font-size: 13px; outline: none;
 }
-.share-email-row input:focus { border-color: var(--blue); }
+.share-email-row input:focus { border-color: var(--primary); }
 .share-divider {
   display: flex; align-items: center; gap: 8px; margin: 12px 0;
   color: var(--text-muted); font-size: 12px;
@@ -306,7 +306,7 @@ body {
   width: 100%; padding: 10px 12px; border: 1px solid var(--border);
   border-radius: var(--radius-sm); font-size: 13px; outline: none;
 }
-.folder-content input:focus { border-color: var(--blue); }
+.folder-content input:focus { border-color: var(--primary); }
 .delete-content p { font-size: 14px; color: var(--text-secondary); }
 
 /* Folder Picker */
@@ -315,7 +315,7 @@ body {
   display: flex; align-items: center; gap: 4px;
   padding: 8px 0; font-size: 12px; margin-bottom: 8px;
 }
-.picker-breadcrumb a { color: var(--blue); cursor: pointer; text-decoration: none; }
+.picker-breadcrumb a { color: var(--primary); cursor: pointer; text-decoration: none; }
 .picker-breadcrumb .sep { color: var(--text-muted); margin: 0 2px; }
 .picker-breadcrumb .current { color: var(--text); font-weight: 500; }
 .picker-grid { display: flex; flex-direction: column; gap: 2px; max-height: 300px; overflow-y: auto; }
@@ -351,8 +351,8 @@ body {
 .kebab-dropdown button:hover { background: var(--bg-hover); }
 
 /* ── Focus Visible ─────────────────────────────────────────────────── */
-.btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
-.modal-close:focus-visible { outline: 2px solid var(--blue); }
+.btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.modal-close:focus-visible { outline: 2px solid var(--primary); }
 
 /* Touch */
 @media (max-width: 768px) {
