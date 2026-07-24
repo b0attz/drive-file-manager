@@ -43,6 +43,7 @@ TOKEN_DIR.mkdir(exist_ok=True)
 SCOPES = [
     "openid",
     "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/drive.file",
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/userinfo.profile",
 ]
@@ -160,7 +161,7 @@ async def auth_callback(request: Request, code: str = "", state: str = ""):
     try:
         flow = create_flow()
         flow.code_verifier = saved_verifier or None
-        logger.info("callback: redirect_uri=%s scopes=%s code_verifier_present=%s", flow.redirect_uri, flow.scopes, bool(saved_verifier))
+        logger.info("callback: redirect_uri=%s code_verifier_present=%s", flow.redirect_uri, bool(saved_verifier))
         flow.fetch_token(code=code)
     except Exception as e:
         logger.exception("callback: token exchange failed")
