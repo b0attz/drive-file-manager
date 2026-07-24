@@ -151,6 +151,12 @@
     <div class="modal-backdrop" onclick="closePreviewModal()"></div>
     <div class="modal-content preview-content">
       <button class="modal-close" aria-label="ปิด" onclick="closePreviewModal()">✕</button>
+      <div class="preview-toolbar" id="preview-toolbar" style="display:none">
+        <button onclick="zoomIn()" title="ขยาย">+</button>
+        <button onclick="zoomOut()" title="ย่อ">−</button>
+        <button onclick="zoomReset()" title="รีเซ็ต">↺</button>
+        <span id="zoom-level">100%</span>
+      </div>
       <img id="preview-image" class="preview-image" src="" alt="Preview">
       <div id="preview-info" class="preview-info"></div>
     </div>

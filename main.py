@@ -452,13 +452,14 @@ async def list_trash(request: Request):
 
 
 @app.get("/api/files/{file_id:str}/download")
-async def download_file(request: Request, file_id: str):
+async def download_file(request: Request, file_id: str, inline: bool = False):
     service, _ = await get_drive_service(request)
     content, mime_type, name = await _download_file(service, file_id)
+    disposition = "inline" if inline else "attachment"
     return StreamingResponse(
         iter([content]),
         media_type=mime_type,
-        headers={"Content-Disposition": f'attachment; filename="{name}"'},
+        headers={"Content-Disposition": f'{disposition}; filename="{name}"'},
     )
 
 
