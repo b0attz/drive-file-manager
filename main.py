@@ -328,11 +328,17 @@ async def _share_file(service, file_id: str, email: str = "") -> str:
 
 async def _download_file(service, file_id: str) -> tuple[bytes, str, str]:
     """Download file content + mime type + name."""
-    meta = service.files().get(fileId=file_id, fields="mimeType,name,size").execute()
-    size = int(meta.get("size", 0))
+    try:
+        meta = service.files().get(fileId=file_id, fields="mimeType,name,size").execute()
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"File not found: {e}")
+    size = int(meta.get("size", 0) or 0)
     if size > 50 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="File too large for preview (max 50MB)")
-    content = service.files().get_media(fileId=file_id).execute()
+    try:
+        content = service.files().get_media(fileId=file_id).execute()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Cannot download this file type: {e}")
     return content, meta.get("mimeType", "application/octet-stream"), meta.get("name", "file")
 
 

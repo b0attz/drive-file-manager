@@ -491,14 +491,7 @@ function applyZoom() {
   const img = $('preview-image');
   img.style.transform = `scale(${previewZoom})`;
   $('zoom-level').textContent = `${Math.round(previewZoom * 100)}%`;
-  img.classList.toggle('zoomed', previewZoom !== 1);
 }
-
-$('preview-image').addEventListener('wheel', (e) => {
-  if ($('preview-modal').classList.contains('hidden')) return;
-  e.preventDefault();
-  if (e.deltaY < 0) zoomIn(); else zoomOut();
-}, { passive: false });
 
 function closePreviewModal() {
   const modal = $('preview-modal');
@@ -509,7 +502,6 @@ function closePreviewModal() {
   $('preview-image').src = '';
   $('preview-image').style.display = 'none';
   $('preview-image').style.transform = '';
-  $('preview-image').classList.remove('zoomed');
   $('preview-toolbar').style.display = 'none';
   previewZoom = 1;
   modal.classList.add('hidden');
