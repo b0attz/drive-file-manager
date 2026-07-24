@@ -152,13 +152,15 @@ async def auth_login(request: Request):
 @app.get("/auth/callback")
 async def auth_callback(request: Request, code: str = "", state: str = ""):
     saved_state = request.session.get("oauth_state")
-    logger.info("callback: state=%s saved=%s code_len=%d", state, saved_state, len(code))
+    saved_verifier = request.session.get("code_verifier", "")
+    logger.info("callback: state=%s saved=%s code_len=%d verifier_len=%d", state, saved_state, len(code), len(saved_verifier))
     if not saved_state or saved_state != state:
         logger.warning("callback: state mismatch saved=%s got=%s", saved_state, state)
         raise HTTPException(status_code=400, detail="State mismatch — CSRF detected")
     try:
         flow = create_flow()
-        flow.code_verifier = request.session.get("code_verifier", "")
+        flow.code_verifier = saved_verifier or None
+        logger.info("callback: redirect_uri=%s scopes=%s code_verifier_present=%s", flow.redirect_uri, flow.scopes, bool(saved_verifier))
         flow.fetch_token(code=code)
     except Exception as e:
         logger.exception("callback: token exchange failed")
