@@ -418,7 +418,7 @@ function previewFile(file) {
   const content = modal.querySelector('.preview-content');
 
   // Clear previous dynamic content
-  const existing = content.querySelector('.preview-video, .preview-audio, .preview-text');
+  const existing = content.querySelector('.preview-video, .preview-audio, .preview-text, .preview-iframe');
   if (existing) existing.remove();
 
   img.style.display = 'none';
@@ -430,7 +430,11 @@ function previewFile(file) {
     $('preview-toolbar').style.display = 'flex';
     $('zoom-level').textContent = '100%';
     modal.classList.remove('hidden');
-  } else if (mime.includes('pdf')) {
+  } else if (mime.includes('pdf') || mime.includes('word') || mime.includes('document') || ['doc','docx'].includes(ext)) {
+    window.open(url, '_blank');
+  } else if (mime.includes('spreadsheet') || mime.includes('excel') || ['xls','xlsx','csv'].includes(ext)) {
+    window.open(url, '_blank');
+  } else if (mime.includes('presentation') || ['ppt','pptx'].includes(ext)) {
     window.open(url, '_blank');
   } else if (mime.startsWith('video/') || ['mp4','webm','ogg','mov','avi','mkv'].includes(ext)) {
     const v = document.createElement('video');
@@ -450,7 +454,7 @@ function previewFile(file) {
     content.style.background = '#1a1a2e';
     modal.classList.remove('hidden');
   } else if (mime.startsWith('text/') || ['json','js','ts','py','java','c','cpp','h','css','html','xml','yaml','yml','toml','ini','cfg','conf','md','txt','csv','log','sh','bat','ps1','sql','rb','go','rs','swift','kt','scala','r','mat','m','ipynb'].includes(ext)) {
-    fetch(url).then(r => r.text()).then(text => {
+    fetch(url).then(r => r.ok ? r.text() : Promise.reject()).then(text => {
       const pre = document.createElement('pre');
       pre.className = 'preview-text';
       pre.textContent = text;
@@ -458,15 +462,9 @@ function previewFile(file) {
       content.style.background = '#1e293b';
       modal.classList.remove('hidden');
     }).catch(() => toast('ไม่สามารถโหลดไฟล์ได้', 'error'));
-  } else if (mime.includes('spreadsheet') || mime.includes('excel') || ['xls','xlsx','csv'].includes(ext)) {
-    window.open(`https://docs.google.com/spreadsheets/d/${file.id}/edit`, '_blank');
-  } else if (mime.includes('document') || mime.includes('word') || ['doc','docx'].includes(ext)) {
-    window.open(`https://docs.google.com/document/d/${file.id}/edit`, '_blank');
-  } else if (mime.includes('presentation') || ['ppt','pptx'].includes(ext)) {
-    window.open(`https://docs.google.com/presentation/d/${file.id}/edit`, '_blank');
   } else {
     downloadFile(file.id);
-    toast('ไฟล์นี้เปิดในตัวดูโดยตรงไม่ได้ กำลังดาวน์โหลด...', 'info');
+    toast('กำลังดาวน์โหลดไฟล์...', 'info');
   }
 }
 
@@ -650,6 +648,8 @@ function renderFileRow(file) {
   const onclick = isFolder
     ? (state.showingTrash ? '' : `navigateToFolder(${fid},${fname})`)
     : `previewFile(${ej(file)})`;
+  const selectOnclick = `event.stopPropagation();toggleSelect(${fid},event)`;
+  const contextHandler = `oncontextmenu="showContextMenu(${fid},event)"`;
 
   const enterKey = isFolder
     ? (state.showingTrash ? '' : `onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigateToFolder(${fid},${fname})}"`)
@@ -704,7 +704,8 @@ function renderFileRow(file) {
   }
 
   return `
-    <div class="file-row" data-id="${escapeHtml(file.id)}" data-mime="${escapeHtml(file.mimeType || '')}" onclick="${onclick}" tabindex="0" ${enterKey}>
+    <div class="file-row" data-id="${escapeHtml(file.id)}" data-mime="${escapeHtml(file.mimeType || '')}" onclick="${onclick}" tabindex="0" ${enterKey} ${contextHandler}>
+      <input type="checkbox" class="file-checkbox" onclick="${selectOnclick}" ${selectedIds.has(file.id) ? 'checked' : ''}>
       <div class="file-name-cell">
         <span class="file-icon-cell">${icon}</span>
         <span class="file-name-text" title="${name}">${name}</span>
@@ -787,6 +788,139 @@ document.addEventListener('drop', (e) => {
   dropOverlay.classList.add('hidden');
   const files = e.dataTransfer.files;
   if (files.length) uploadFiles(files);
+});
+
+// ──── Selection State ────
+const selectedIds = new Set();
+let lastClickedId = null;
+
+function toggleSelect(fileId, e) {
+  if (e && e.shiftKey && lastClickedId) {
+    const rows = [...document.querySelectorAll('.file-row')];
+    const ids = rows.map(r => r.dataset.id);
+    const a = ids.indexOf(lastClickedId);
+    const b = ids.indexOf(fileId);
+    if (a !== -1 && b !== -1) {
+      const [start, end] = a < b ? [a, b] : [b, a];
+      for (let i = start; i <= end; i++) selectedIds.add(ids[i]);
+    }
+  } else if (e && (e.ctrlKey || e.metaKey)) {
+    if (selectedIds.has(fileId)) selectedIds.delete(fileId); else selectedIds.add(fileId);
+  } else {
+    if (selectedIds.has(fileId) && selectedIds.size === 1) { selectedIds.clear(); } 
+    else { selectedIds.clear(); selectedIds.add(fileId); }
+  }
+  lastClickedId = fileId;
+  updateSelection();
+}
+
+function selectAll() {
+  state.files.forEach(f => selectedIds.add(f.id));
+  updateSelection();
+}
+
+function clearSelection() {
+  selectedIds.clear();
+  lastClickedId = null;
+  updateSelection();
+}
+
+function updateSelection() {
+  document.querySelectorAll('.file-row').forEach(row => {
+    row.classList.toggle('selected', selectedIds.has(row.dataset.id));
+    const cb = row.querySelector('.file-checkbox');
+    if (cb) cb.checked = selectedIds.has(row.dataset.id);
+  });
+  const bar = $('select-bar');
+  const count = selectedIds.size;
+  bar.classList.toggle('active', count > 0);
+  $('select-count').textContent = `${count} ไฟล์ถูกเลือก`;
+}
+
+function getSelectedFiles() {
+  return state.files.filter(f => selectedIds.has(f.id));
+}
+
+// ──── Context Menu ────
+let contextFile = null;
+
+function showContextMenu(fileId, e) {
+  e.preventDefault();
+  e.stopPropagation();
+  contextFile = state.files.find(f => f.id === fileId);
+  if (!contextFile) return;
+  if (!selectedIds.has(fileId)) { selectedIds.clear(); selectedIds.add(fileId); updateSelection(); }
+  const menu = $('context-menu');
+  menu.classList.remove('hidden');
+  const x = Math.min(e.clientX, window.innerWidth - 220);
+  const y = Math.min(e.clientY, window.innerHeight - 300);
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+}
+
+function hideContextMenu() { $('context-menu').classList.add('hidden'); }
+
+function contextAction(action) {
+  hideContextMenu();
+  if (!contextFile) return;
+  if (action === 'preview') previewFile(contextFile);
+  else if (action === 'download') downloadFile(contextFile.id);
+  else if (action === 'share') showShareModal(contextFile.id, contextFile.name);
+  else if (action === 'rename') showRenameModal(contextFile.id, contextFile.name);
+  else if (action === 'move') showFolderPicker('move', contextFile.id, contextFile.name);
+  else if (action === 'copy') showFolderPicker('copy', contextFile.id, contextFile.name);
+  else if (action === 'delete') showDeleteModal(contextFile.id, contextFile.name);
+  contextFile = null;
+}
+
+function bulkDownload() { getSelectedFiles().forEach(f => downloadFile(f.id)); clearSelection(); }
+function bulkDelete() {
+  const files = getSelectedFiles();
+  if (!files.length) return;
+  if (confirm(`ลบ ${files.length} ไฟล์?`)) {
+    Promise.all(files.map(f => apiCall(`/api/files/${f.id}/trash`, 'POST'))).then(() => { clearSelection(); loadFiles(); toast(`ลบ ${files.length} ไฟล์แล้ว`); });
+  }
+}
+
+document.addEventListener('click', hideContextMenu);
+
+// ──── Rubber Band Selection ────
+let rubberBand = null;
+let rbStart = null;
+
+document.addEventListener('mousedown', (e) => {
+  if (e.button !== 0) return;
+  if (e.target.closest('.file-row') || e.target.closest('.context-menu') || e.target.closest('.modal') || e.target.closest('button') || e.target.closest('input') || e.target.closest('nav')) return;
+  const list = $('file-list');
+  if (!list) return;
+  rbStart = { x: e.clientX, y: e.clientY };
+  rubberBand = document.createElement('div');
+  rubberBand.className = 'rubber-band';
+  document.body.appendChild(rubberBand);
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!rbStart || !rubberBand) return;
+  const x = Math.min(rbStart.x, e.clientX);
+  const y = Math.min(rbStart.y, e.clientY);
+  const w = Math.abs(e.clientX - rbStart.x);
+  const h = Math.abs(e.clientY - rbStart.y);
+  rubberBand.style.left = x + 'px';
+  rubberBand.style.top = y + 'px';
+  rubberBand.style.width = w + 'px';
+  rubberBand.style.height = h + 'px';
+  const rbRect = { left: x, top: y, right: x + w, bottom: y + h };
+  document.querySelectorAll('.file-row').forEach(row => {
+    const rr = row.getBoundingClientRect();
+    const hit = !(rr.right < rbRect.left || rr.left > rbRect.right || rr.bottom < rbRect.top || rr.top > rbRect.bottom);
+    if (hit) selectedIds.add(row.dataset.id); else if (!(e.ctrlKey || e.metaKey)) selectedIds.delete(row.dataset.id);
+  });
+  updateSelection();
+});
+
+document.addEventListener('mouseup', () => {
+  if (rubberBand) { rubberBand.remove(); rubberBand = null; }
+  rbStart = null;
 });
 
 // ──── Keyboard shortcuts ────

@@ -165,13 +165,13 @@ body {
 /* ── File List (Table) ─────────────────────────────────────────────── */
 .file-list { width: 100%; }
 .file-list-header {
-  display: grid; grid-template-columns: 1fr 150px 180px 100px 48px;
+  display: grid; grid-template-columns: 24px 1fr 150px 180px 100px 48px;
   padding: 0 16px; font-size: 12px; font-weight: 500;
   color: var(--text-secondary); border-bottom: 1px solid var(--border);
   height: 40px; align-items: center; user-select: none;
 }
 .file-row {
-  display: grid; grid-template-columns: 1fr 150px 180px 100px 48px;
+  display: grid; grid-template-columns: 24px 1fr 150px 180px 100px 48px;
   padding: 0 16px; height: 48px; align-items: center;
   border-bottom: 1px solid var(--border); cursor: pointer;
   transition: background 0.1s; font-size: 13px;
@@ -376,6 +376,46 @@ body {
 }
 .kebab-dropdown button:hover { background: var(--bg-hover); }
 
+/* ── Context Menu ────────────────────────────────────────────────── */
+.context-menu {
+  position: fixed; z-index: 1000;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 200px; padding: 4px 0;
+}
+.context-menu button {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 8px 16px; border: none; background: none;
+  font-size: 13px; cursor: pointer; color: var(--text); text-align: left;
+}
+.context-menu button:hover { background: var(--bg-hover); }
+.context-menu .context-danger { color: var(--danger); }
+.context-menu .context-danger:hover { background: #fef2f2; }
+.context-separator { height: 1px; background: var(--border); margin: 4px 0; }
+
+/* ── Selected State ──────────────────────────────────────────────── */
+.file-row.selected { background: var(--primary-light) !important; }
+.file-row.selected .file-name { color: var(--primary); font-weight: 500; }
+.file-checkbox { display: none; width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
+.file-row:hover .file-checkbox { display: block; }
+.file-row.selected .file-checkbox { display: block; }
+.select-bar {
+  display: none; align-items: center; gap: 12px;
+  padding: 8px 16px; background: var(--primary-light);
+  border-bottom: 1px solid var(--border); font-size: 13px; color: var(--primary);
+}
+.select-bar.active { display: flex; }
+.select-bar button {
+  background: none; border: none; color: var(--primary); cursor: pointer;
+  font-size: 13px; padding: 4px 8px; border-radius: var(--radius-sm);
+}
+.select-bar button:hover { background: rgba(99,102,241,0.1); }
+
+/* ── Rubber Band ─────────────────────────────────────────────────── */
+.rubber-band {
+  position: fixed; border: 2px dashed var(--primary);
+  background: rgba(99,102,241,0.08); pointer-events: none; z-index: 50;
+}
+
 /* ── Focus Visible ─────────────────────────────────────────────────── */
 .btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .modal-close:focus-visible { outline: 2px solid var(--primary); }
@@ -384,7 +424,7 @@ body {
 @media (max-width: 768px) {
   .sidebar { display: none; }
   .file-list-header { display: none; }
-  .file-row { grid-template-columns: 1fr 48px; padding: 0 12px; }
+  .file-row { grid-template-columns: 24px 1fr 48px; padding: 0 12px; }
   .file-owner, .file-date, .file-size { display: none; }
   .file-actions-cell { display: flex; }
   .user-email { display: none; }

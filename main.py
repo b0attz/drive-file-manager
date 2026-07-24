@@ -326,12 +326,35 @@ async def _share_file(service, file_id: str, email: str = "") -> str:
     return meta.get("webViewLink", f"https://drive.google.com/file/d/{file_id}/view")
 
 
+GOOGLE_EXPORT_MAP = {
+    "application/vnd.google-apps.document": ("application/pdf", "pdf"),
+    "application/vnd.google-apps.spreadsheet": ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "xlsx"),
+    "application/vnd.google-apps.presentation": ("application/pdf", "pdf"),
+    "application/vnd.google-apps.script": ("application/json", "json"),
+    "application/vnd.google-apps.folder": None,
+}
+
+
 async def _download_file(service, file_id: str) -> tuple[bytes, str, str]:
     """Download file content + mime type + name."""
     try:
         meta = service.files().get(fileId=file_id, fields="mimeType,name,size").execute()
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"File not found: {e}")
+    mime = meta.get("mimeType", "")
+    name = meta.get("name", "file")
+    export = GOOGLE_EXPORT_MAP.get(mime)
+    if export is None:
+        raise HTTPException(status_code=400, detail="Cannot download folders")
+    if export:
+        export_mime, ext = export
+        try:
+            content = service.files().export_media(fileId=file_id, mimeType=export_mime).execute()
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Cannot export this file: {e}")
+        if not name.endswith(f'.{ext}'):
+            name = f"{name}.{ext}"
+        return content, export_mime, name
     size = int(meta.get("size", 0) or 0)
     if size > 50 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="File too large for preview (max 50MB)")
@@ -339,7 +362,7 @@ async def _download_file(service, file_id: str) -> tuple[bytes, str, str]:
         content = service.files().get_media(fileId=file_id).execute()
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Cannot download this file type: {e}")
-    return content, meta.get("mimeType", "application/octet-stream"), meta.get("name", "file")
+    return content, mime, name
 
 
 async def _move_file(service, file_id: str, new_parent_id: str, old_parent_id: str) -> dict:
